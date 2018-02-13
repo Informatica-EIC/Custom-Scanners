@@ -3,16 +3,16 @@
 Create a new model
 ---------------
 
-*In the Catalog Admin UI, go to Manage > Models
-*In the left panel, click on the arrow pointing down and ìNew Custom Modelî
-*Browse to the standard API xml file and click OK
-*Review the newly created model ìSwagger API V2î
+* In the Catalog Admin UI, go to Manage > Models
+* In the left panel, click on the arrow pointing down and ‚ÄúNew Custom Model‚Äù
+* Browse to the standard API xml file and click OK
+* Review the newly created model ‚ÄúSwagger API V2‚Äù
 
 Create a custom resource type
 -----------------------------
 
 *In the Catalog Admin UI, go to Manage > Custom Resource Types
-*On the left panel, click on the ì+î sign
+*On the left panel, click on the ‚Äú+‚Äù sign
 *Enter "Swagger API" as Name, select the "Swagger API V2" Model and select the "Endpoint" as connection types
 
 Generate CSV files from Swagger JSON
