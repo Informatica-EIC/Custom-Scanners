@@ -1,0 +1,268 @@
+<Package>
+   <packageName>com.ldm.custom.swaggerapiv2</packageName>
+   <packageDescription>Swagger API V2</packageDescription>
+   <packageLabel>Swagger API V2</packageLabel>
+   <version>2</version>
+   <requiredPackages>
+      <requiredPackage>
+         <packageName>core</packageName>
+         <version>1</version>
+      </requiredPackage>
+   </requiredPackages>
+   <referenceDatatypes />
+   <referenceAttributes />
+   <classes>
+      <class>
+         <name>SwaggerInfo</name>
+         <label>Info</label>
+         <description />
+         <isFirstClass>true</isFirstClass>
+         <boost>LOW</boost>
+         <superClasses>
+         	<superClass>core.DataSource</superClass>
+         </superClasses>
+         <deprecated>false</deprecated>
+      </class>  
+	  
+	  <class>
+         <name>Tag</name>
+         <label>Tag</label>
+         <description />
+         <isFirstClass>true</isFirstClass>
+         <boost>LOW</boost>
+         <superClasses>
+         	<superClass>core.DataSource</superClass>
+         </superClasses>
+         <deprecated>false</deprecated>
+      </class>
+
+	  <class>
+         <name>Endpoint</name>
+         <label>Endpoint</label>
+         <description />
+         <isFirstClass>true</isFirstClass>
+         <boost>LOW</boost>
+         <superClasses>
+         	<superClass>core.DataSet</superClass>
+         </superClasses>
+         <deprecated>false</deprecated>
+      </class>
+	  
+	  <class>
+         <name>Parameter</name>
+         <label>Parameter</label>
+         <description />
+         <isFirstClass>true</isFirstClass>
+         <boost>LOW</boost>
+         <superClasses>
+         	<superClass>core.DataElement</superClass>
+         </superClasses>
+         <deprecated>false</deprecated>
+      </class>
+	  
+	  <class>
+         <name>Response</name>
+         <label>Response</label>
+         <description />
+         <isFirstClass>true</isFirstClass>
+         <boost>LOW</boost>
+         <superClasses>
+         	<superClass>core.DataElement</superClass>
+         </superClasses>
+         <deprecated>false</deprecated>
+      </class>
+	  
+	  
+       
+   </classes>
+   <attributes>
+   
+       
+    <attribute>
+         <name>version</name>
+         <label>Version</label>
+         <dataType>core.String</dataType>
+         <searchable>false</searchable>
+         <facetable>false</facetable>
+         <boost>LOW</boost>
+         <description />
+         <multivalued>false</multivalued>
+         <suggestable>false</suggestable>
+         <sortable>false</sortable>
+         <visible>true</visible>
+         <deprecated>false</deprecated>
+         <derived>false</derived>
+         <fuzzy>false</fuzzy>
+         <data>false</data>
+      </attribute>
+	
+
+    <attribute>
+         <name>email</name>
+         <label>Email</label>
+         <dataType>core.String</dataType>
+         <searchable>false</searchable>
+         <facetable>false</facetable>
+         <boost>LOW</boost>
+         <description />
+         <multivalued>false</multivalued>
+         <suggestable>false</suggestable>
+         <sortable>false</sortable>
+         <visible>true</visible>
+         <deprecated>false</deprecated>
+         <derived>false</derived>
+         <fuzzy>false</fuzzy>
+         <data>false</data>
+      </attribute>
+
+    <attribute>
+         <name>url</name>
+         <label>URL</label>
+         <dataType>core.String</dataType>
+         <searchable>false</searchable>
+         <facetable>false</facetable>
+         <boost>LOW</boost>
+         <description />
+         <multivalued>false</multivalued>
+         <suggestable>false</suggestable>
+         <sortable>false</sortable>
+         <visible>true</visible>
+         <deprecated>false</deprecated>
+         <derived>false</derived>
+         <fuzzy>false</fuzzy>
+         <data>false</data>
+      </attribute>
+
+
+    <attribute>
+         <name>summary</name>
+         <label>Summary</label>
+         <dataType>core.String</dataType>
+         <searchable>false</searchable>
+         <facetable>false</facetable>
+         <boost>LOW</boost>
+         <description />
+         <multivalued>false</multivalued>
+         <suggestable>false</suggestable>
+         <sortable>false</sortable>
+         <visible>true</visible>
+         <deprecated>false</deprecated>
+         <derived>false</derived>
+         <fuzzy>false</fuzzy>
+         <data>false</data>
+      </attribute>  
+    <attribute>
+         <name>in</name>
+         <label>In</label>
+         <dataType>core.String</dataType>
+         <searchable>false</searchable>
+         <facetable>false</facetable>
+         <boost>LOW</boost>
+         <description />
+         <multivalued>false</multivalued>
+         <suggestable>false</suggestable>
+         <sortable>false</sortable>
+         <visible>true</visible>
+         <deprecated>false</deprecated>
+         <derived>false</derived>
+         <fuzzy>false</fuzzy>
+         <data>false</data>
+      </attribute>	  
+    <attribute>
+         <name>required</name>
+         <label>Required</label>
+         <dataType>core.Boolean</dataType>
+         <searchable>false</searchable>
+         <facetable>false</facetable>
+         <boost>LOW</boost>
+         <description />
+         <multivalued>false</multivalued>
+         <suggestable>false</suggestable>
+         <sortable>false</sortable>
+         <visible>true</visible>
+         <deprecated>false</deprecated>
+         <derived>false</derived>
+         <fuzzy>false</fuzzy>
+         <data>false</data>
+      </attribute>	  
+    <attribute>
+         <name>type</name>
+         <label>Type</label>
+         <dataType>core.String</dataType>
+         <searchable>false</searchable>
+         <facetable>false</facetable>
+         <boost>LOW</boost>
+         <description />
+         <multivalued>false</multivalued>
+         <suggestable>false</suggestable>
+         <sortable>false</sortable>
+         <visible>true</visible>
+         <deprecated>false</deprecated>
+         <derived>false</derived>
+         <fuzzy>false</fuzzy>
+         <data>false</data>
+      </attribute>	  
+      
+</attributes>
+   <associations>
+   
+      <association>
+         <name>SwaggerInfoTag</name>
+         <fromClass>com.ldm.custom.swaggerapiv2.SwaggerInfo</fromClass>
+         <toClass>com.ldm.custom.swaggerapiv2.Tag</toClass>
+         <fromLabel>Info</fromLabel>
+         <toLabel>Tag</toLabel>
+         <associationKinds>
+            <associationKind>core.ParentChild</associationKind>
+         </associationKinds>
+         <deprecated>false</deprecated>
+         <unidirectional>false</unidirectional>
+      </association>
+	  
+	   <association>
+         <name>TagEndpoint</name>
+         <fromClass>com.ldm.custom.swaggerapiv2.Tag</fromClass>
+         <toClass>com.ldm.custom.swaggerapiv2.Endpoint</toClass>
+         <fromLabel>Tag</fromLabel>
+         <toLabel>Endpoint</toLabel>
+         <associationKinds>
+            <associationKind>core.ParentChild</associationKind>
+         </associationKinds>
+         <deprecated>false</deprecated>
+         <unidirectional>false</unidirectional>
+      </association>
+	  
+	<association>
+         <name>EndpointParameter</name>
+         <fromClass>com.ldm.custom.swaggerapiv2.Endpoint</fromClass>
+         <toClass>com.ldm.custom.swaggerapiv2.Parameter</toClass>
+         <fromLabel>Endpoint</fromLabel>
+         <toLabel>Parameter</toLabel>
+         <associationKinds>
+            <associationKind>core.ParentChild</associationKind>
+         </associationKinds>
+         <deprecated>false</deprecated>
+         <unidirectional>false</unidirectional>
+      </association>
+	  
+	  <association>
+         <name>EndpointResponse</name>
+         <fromClass>com.ldm.custom.swaggerapiv2.Endpoint</fromClass>
+         <toClass>com.ldm.custom.swaggerapiv2.Response</toClass>
+         <fromLabel>Endpoint</fromLabel>
+         <toLabel>Response</toLabel>
+         <associationKinds>
+            <associationKind>core.ParentChild</associationKind>
+         </associationKinds>
+         <deprecated>false</deprecated>
+         <unidirectional>false</unidirectional>
+      </association>
+	  
+
+	  
+     
+   </associations>
+   <associationKinds />
+   <dataTypes />
+   <classAttributes />
+</Package>

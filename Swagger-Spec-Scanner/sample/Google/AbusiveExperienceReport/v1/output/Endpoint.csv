@@ -1,0 +1,3 @@
+"class","identity","core.name","core.description","com.ldm.custom.swaggerapiv2.summary"
+"com.ldm.custom.swaggerapiv2.Endpoint","Google_Abusive_Experience_Report/violatingSites/_GET___v1_violatingSites","[GET]:/v1/violatingSites","Lists sites with Abusive Experience Report statuses of ""Failing"".",""
+"com.ldm.custom.swaggerapiv2.Endpoint","Google_Abusive_Experience_Report/sites/_GET___v1__name_","[GET]:/v1/{name}","Gets a summary of the abusive experience rating of a site.",""

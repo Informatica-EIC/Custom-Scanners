@@ -1,0 +1,3908 @@
+{
+  "swagger" : "2.0",
+  "info" : {
+    "description" : "Catalog administrator public REST API.",
+    "version" : "1.0.0",
+    "title" : "Catalog Administrator Public REST API"
+  },
+  "basePath" : "/2",
+  "tags" : [ {
+    "name" : "Object Info",
+    "description" : "Search, perform lineage, or view object properties and associations"
+  }, {
+    "name" : "Object Modification",
+    "description" : "Create, update, or delete custom properties, objects, and associations"
+  }, {
+    "name" : "Resource Info",
+    "description" : "Read information about resource configuration, schedules, and runs"
+  }, {
+    "name" : "Resource Execution",
+    "description" : "Manually execute resource loads, test connections"
+  }, {
+    "name" : "Resource Modification",
+    "description" : "Create, update, and delete resources"
+  }, {
+    "name" : "Connection Assignment",
+    "description" : "Read and assign connections"
+  }, {
+    "name" : "Model Info",
+    "description" : "Read classes, attributes, associations, and data types"
+  }, {
+    "name" : "Model Modification",
+    "description" : "Create, update, or delete attributes"
+  } ],
+  "produces" : [ "application/json" ],
+  "security" : [ {
+    "basic" : [ ]
+  }, {
+    "apiKey" : [ ]
+  } ],
+  "paths" : {
+    "/catalog/models/dataTypes" : {
+      "get" : {
+        "tags" : [ "Catalog", "Model Info" ],
+        "summary" : "Data Types",
+        "description" : "List data types",
+        "parameters" : [ {
+          "name" : "id",
+          "in" : "query",
+          "required" : false,
+          "type" : "array",
+          "items" : {
+            "type" : "string",
+            "pattern" : "[^.]+[.].*[^.]"
+          },
+          "collectionFormat" : "multi"
+        }, {
+          "name" : "offset",
+          "in" : "query",
+          "description" : "Starting from result",
+          "required" : false,
+          "type" : "number",
+          "default" : 0.0,
+          "minimum" : 0,
+          "format" : "int32"
+        }, {
+          "name" : "pageSize",
+          "in" : "query",
+          "description" : "Results per page",
+          "required" : false,
+          "type" : "number",
+          "default" : 20.0,
+          "minimum" : 1,
+          "format" : "int32"
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "List of data types",
+            "schema" : {
+              "$ref" : "#/definitions/DataTypesResponse"
+            }
+          },
+          "400" : {
+            "description" : "Missing or invalid parameter",
+            "schema" : {
+              "$ref" : "#/definitions/Error"
+            }
+          },
+          "401" : {
+            "description" : "Missing credentials",
+            "schema" : {
+              "$ref" : "#/definitions/Error"
+            }
+          },
+          "403" : {
+            "description" : "User does not have access permission",
+            "schema" : {
+              "$ref" : "#/definitions/Error"
+            }
+          },
+          "429" : {
+            "description" : "Rate limit for requests",
+            "schema" : {
+              "$ref" : "#/definitions/Error"
+            },
+            "headers" : {
+              "Retry-After" : {
+                "type" : "number",
+                "format" : "integer",
+                "description" : "Retry after X seconds"
+              }
+            }
+          },
+          "default" : {
+            "description" : "Unexpected error",
+            "schema" : {
+              "$ref" : "#/definitions/Error"
+            }
+          }
+        }
+      }
+    },
+    "/catalog/models/dataTypes/{id}" : {
+      "get" : {
+        "tags" : [ "Catalog", "Model Info" ],
+        "summary" : "Data Type",
+        "description" : "Data type details",
+        "parameters" : [ {
+          "name" : "id",
+          "in" : "path",
+          "required" : true,
+          "type" : "string",
+          "pattern" : "[^.]+[.].*[^.]"
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "Data type",
+            "schema" : {
+              "$ref" : "#/definitions/AbstractDataTypeResponse"
+            }
+          },
+          "401" : {
+            "description" : "Missing credentials",
+            "schema" : {
+              "$ref" : "#/definitions/Error"
+            }
+          },
+          "403" : {
+            "description" : "User does not have access permission",
+            "schema" : {
+              "$ref" : "#/definitions/Error"
+            }
+          },
+          "404" : {
+            "description" : "Requested object not found",
+            "schema" : {
+              "$ref" : "#/definitions/Error"
+            }
+          },
+          "429" : {
+            "description" : "Rate limit for requests",
+            "schema" : {
+              "$ref" : "#/definitions/Error"
+            },
+            "headers" : {
+              "Retry-After" : {
+                "type" : "number",
+                "format" : "integer",
+                "description" : "Retry after X seconds"
+              }
+            }
+          },
+          "default" : {
+            "description" : "Unexpected error",
+            "schema" : {
+              "$ref" : "#/definitions/Error"
+            }
+          }
+        }
+      }
+    },
+    "/catalog/models/associations" : {
+      "get" : {
+        "tags" : [ "Catalog", "Model Info" ],
+        "summary" : "Associations",
+        "description" : "List associations",
+        "parameters" : [ {
+          "name" : "id",
+          "in" : "query",
+          "required" : false,
+          "type" : "array",
+          "items" : {
+            "type" : "string",
+            "pattern" : "[^.]+[.].*[^.]"
+          },
+          "collectionFormat" : "multi"
+        }, {
+          "name" : "offset",
+          "in" : "query",
+          "description" : "Starting from result",
+          "required" : false,
+          "type" : "number",
+          "default" : 0.0,
+          "minimum" : 0,
+          "format" : "int32"
+        }, {
+          "name" : "pageSize",
+          "in" : "query",
+          "description" : "Results per page",
+          "required" : false,
+          "type" : "number",
+          "default" : 20.0,
+          "minimum" : 1,
+          "format" : "int32"
+        }, {
+          "name" : "isA",
+          "in" : "query",
+          "description" : "Return associations that inherit the given association kinds",
+          "required" : false,
+          "type" : "array",
+          "items" : {
+            "type" : "string"
+          },
+          "collectionFormat" : "multi"
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "List of associations",
+            "schema" : {
+              "$ref" : "#/definitions/AssociationsResponse"
+            }
+          },
+          "400" : {
+            "description" : "Missing or invalid parameter",
+            "schema" : {
+              "$ref" : "#/definitions/Error"
+            }
+          },
+          "401" : {
+            "description" : "Missing credentials",
+            "schema" : {
+              "$ref" : "#/definitions/Error"
+            }
+          },
+          "403" : {
+            "description" : "User does not have access permission",
+            "schema" : {
+              "$ref" : "#/definitions/Error"
+            }
+          },
+          "429" : {
+            "description" : "Rate limit for requests",
+            "schema" : {
+              "$ref" : "#/definitions/Error"
+            },
+            "headers" : {
+              "Retry-After" : {
+                "type" : "number",
+                "format" : "integer",
+                "description" : "Retry after X seconds"
+              }
+            }
+          },
+          "default" : {
+            "description" : "Unexpected error",
+            "schema" : {
+              "$ref" : "#/definitions/Error"
+            }
+          }
+        }
+      }
+    },
+    "/catalog/models/associations/{id}" : {
+      "get" : {
+        "tags" : [ "Catalog", "Model Info" ],
+        "summary" : "Association",
+        "description" : "Association details",
+        "parameters" : [ {
+          "name" : "id",
+          "in" : "path",
+          "required" : true,
+          "type" : "string",
+          "pattern" : "[^.]+[.].*[^.]"
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "Association",
+            "schema" : {
+              "$ref" : "#/definitions/AssociationResponse"
+            }
+          },
+          "401" : {
+            "description" : "Missing credentials",
+            "schema" : {
+              "$ref" : "#/definitions/Error"
+            }
+          },
+          "403" : {
+            "description" : "User does not have access permission",
+            "schema" : {
+              "$ref" : "#/definitions/Error"
+            }
+          },
+          "404" : {
+            "description" : "Requested object not found",
+            "schema" : {
+              "$ref" : "#/definitions/Error"
+            }
+          },
+          "429" : {
+            "description" : "Rate limit for requests",
+            "schema" : {
+              "$ref" : "#/definitions/Error"
+            },
+            "headers" : {
+              "Retry-After" : {
+                "type" : "number",
+                "format" : "integer",
+                "description" : "Retry after X seconds"
+              }
+            }
+          },
+          "default" : {
+            "description" : "Unexpected error",
+            "schema" : {
+              "$ref" : "#/definitions/Error"
+            }
+          }
+        }
+      }
+    },
+    "/catalog/models/associationKinds" : {
+      "get" : {
+        "tags" : [ "Catalog", "Model Info" ],
+        "summary" : "Association Kinds",
+        "description" : "List association kinds",
+        "parameters" : [ {
+          "name" : "id",
+          "in" : "query",
+          "required" : false,
+          "type" : "array",
+          "items" : {
+            "type" : "string",
+            "pattern" : "[^.]+[.].*[^.]"
+          },
+          "collectionFormat" : "multi"
+        }, {
+          "name" : "offset",
+          "in" : "query",
+          "description" : "Starting from result",
+          "required" : false,
+          "type" : "number",
+          "default" : 0.0,
+          "minimum" : 0,
+          "format" : "int32"
+        }, {
+          "name" : "pageSize",
+          "in" : "query",
+          "description" : "Results per page",
+          "required" : false,
+          "type" : "number",
+          "default" : 20.0,
+          "minimum" : 1,
+          "format" : "int32"
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "List of association kinds",
+            "schema" : {
+              "$ref" : "#/definitions/AssociationKindsResponse"
+            }
+          },
+          "400" : {
+            "description" : "Missing or invalid parameter",
+            "schema" : {
+              "$ref" : "#/definitions/Error"
+            }
+          },
+          "401" : {
+            "description" : "Missing credentials",
+            "schema" : {
+              "$ref" : "#/definitions/Error"
+            }
+          },
+          "403" : {
+            "description" : "User does not have access permission",
+            "schema" : {
+              "$ref" : "#/definitions/Error"
+            }
+          },
+          "429" : {
+            "description" : "Rate limit for requests",
+            "schema" : {
+              "$ref" : "#/definitions/Error"
+            },
+            "headers" : {
+              "Retry-After" : {
+                "type" : "number",
+                "format" : "integer",
+                "description" : "Retry after X seconds"
+              }
+            }
+          },
+          "default" : {
+            "description" : "Unexpected error",
+            "schema" : {
+              "$ref" : "#/definitions/Error"
+            }
+          }
+        }
+      }
+    },
+    "/catalog/models/associationKinds/{id}" : {
+      "get" : {
+        "tags" : [ "Catalog", "Model Info" ],
+        "summary" : "Association Kind",
+        "description" : "Association kind details",
+        "parameters" : [ {
+          "name" : "id",
+          "in" : "path",
+          "required" : true,
+          "type" : "string",
+          "pattern" : "[^.]+[.].*[^.]"
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "Association kind",
+            "schema" : {
+              "$ref" : "#/definitions/AssociationKindResponse"
+            }
+          },
+          "401" : {
+            "description" : "Missing credentials",
+            "schema" : {
+              "$ref" : "#/definitions/Error"
+            }
+          },
+          "403" : {
+            "description" : "User does not have access permission",
+            "schema" : {
+              "$ref" : "#/definitions/Error"
+            }
+          },
+          "404" : {
+            "description" : "Requested object not found",
+            "schema" : {
+              "$ref" : "#/definitions/Error"
+            }
+          },
+          "429" : {
+            "description" : "Rate limit for requests",
+            "schema" : {
+              "$ref" : "#/definitions/Error"
+            },
+            "headers" : {
+              "Retry-After" : {
+                "type" : "number",
+                "format" : "integer",
+                "description" : "Retry after X seconds"
+              }
+            }
+          },
+          "default" : {
+            "description" : "Unexpected error",
+            "schema" : {
+              "$ref" : "#/definitions/Error"
+            }
+          }
+        }
+      }
+    },
+    "/catalog/models/classes" : {
+      "get" : {
+        "tags" : [ "Catalog", "Model Info" ],
+        "summary" : "Classes",
+        "description" : "List classes",
+        "parameters" : [ {
+          "name" : "id",
+          "in" : "query",
+          "required" : false,
+          "type" : "array",
+          "items" : {
+            "type" : "string",
+            "pattern" : "[^.]+[.].*[^.]"
+          },
+          "collectionFormat" : "multi"
+        }, {
+          "name" : "offset",
+          "in" : "query",
+          "description" : "Starting from result",
+          "required" : false,
+          "type" : "number",
+          "default" : 0.0,
+          "minimum" : 0,
+          "format" : "int32"
+        }, {
+          "name" : "pageSize",
+          "in" : "query",
+          "description" : "Results per page",
+          "required" : false,
+          "type" : "number",
+          "default" : 20.0,
+          "minimum" : 1,
+          "format" : "int32"
+        }, {
+          "name" : "isA",
+          "in" : "query",
+          "description" : "Return classes that inherit from the given classes",
+          "required" : false,
+          "type" : "array",
+          "items" : {
+            "type" : "string"
+          },
+          "collectionFormat" : "multi"
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "List of classes",
+            "schema" : {
+              "$ref" : "#/definitions/ClassesResponse"
+            }
+          },
+          "400" : {
+            "description" : "Missing or invalid parameter",
+            "schema" : {
+              "$ref" : "#/definitions/Error"
+            }
+          },
+          "401" : {
+            "description" : "Missing credentials",
+            "schema" : {
+              "$ref" : "#/definitions/Error"
+            }
+          },
+          "403" : {
+            "description" : "User does not have access permission",
+            "schema" : {
+              "$ref" : "#/definitions/Error"
+            }
+          },
+          "429" : {
+            "description" : "Rate limit for requests",
+            "schema" : {
+              "$ref" : "#/definitions/Error"
+            },
+            "headers" : {
+              "Retry-After" : {
+                "type" : "number",
+                "format" : "integer",
+                "description" : "Retry after X seconds"
+              }
+            }
+          },
+          "default" : {
+            "description" : "Unexpected error",
+            "schema" : {
+              "$ref" : "#/definitions/Error"
+            }
+          }
+        }
+      }
+    },
+    "/catalog/models/classes/{id}" : {
+      "get" : {
+        "tags" : [ "Catalog", "Model Info" ],
+        "summary" : "Class",
+        "description" : "Class details",
+        "parameters" : [ {
+          "name" : "id",
+          "in" : "path",
+          "required" : true,
+          "type" : "string",
+          "pattern" : "[^.]+[.].*[^.]"
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "Class",
+            "schema" : {
+              "$ref" : "#/definitions/ClassResponse"
+            }
+          },
+          "401" : {
+            "description" : "Missing credentials",
+            "schema" : {
+              "$ref" : "#/definitions/Error"
+            }
+          },
+          "403" : {
+            "description" : "User does not have access permission",
+            "schema" : {
+              "$ref" : "#/definitions/Error"
+            }
+          },
+          "404" : {
+            "description" : "Requested object not found",
+            "schema" : {
+              "$ref" : "#/definitions/Error"
+            }
+          },
+          "429" : {
+            "description" : "Rate limit for requests",
+            "schema" : {
+              "$ref" : "#/definitions/Error"
+            },
+            "headers" : {
+              "Retry-After" : {
+                "type" : "number",
+                "format" : "integer",
+                "description" : "Retry after X seconds"
+              }
+            }
+          },
+          "default" : {
+            "description" : "Unexpected error",
+            "schema" : {
+              "$ref" : "#/definitions/Error"
+            }
+          }
+        }
+      }
+    },
+    "/catalog/models/referenceDataTypes" : {
+      "get" : {
+        "tags" : [ "Catalog", "Model Info" ],
+        "summary" : "Reference Data Types",
+        "description" : "List reference data types",
+        "parameters" : [ {
+          "name" : "id",
+          "in" : "query",
+          "required" : false,
+          "type" : "array",
+          "items" : {
+            "type" : "string",
+            "pattern" : "[^.]+[.].*[^.]"
+          },
+          "collectionFormat" : "multi"
+        }, {
+          "name" : "offset",
+          "in" : "query",
+          "description" : "Starting from result",
+          "required" : false,
+          "type" : "number",
+          "default" : 0.0,
+          "minimum" : 0,
+          "format" : "int32"
+        }, {
+          "name" : "pageSize",
+          "in" : "query",
+          "description" : "Results per page",
+          "required" : false,
+          "type" : "number",
+          "default" : 20.0,
+          "minimum" : 1,
+          "format" : "int32"
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "List of reference data types",
+            "schema" : {
+              "$ref" : "#/definitions/RefDataTypesResponse"
+            }
+          },
+          "400" : {
+            "description" : "Missing or invalid parameter",
+            "schema" : {
+              "$ref" : "#/definitions/Error"
+            }
+          },
+          "401" : {
+            "description" : "Missing credentials",
+            "schema" : {
+              "$ref" : "#/definitions/Error"
+            }
+          },
+          "403" : {
+            "description" : "User does not have access permission",
+            "schema" : {
+              "$ref" : "#/definitions/Error"
+            }
+          },
+          "429" : {
+            "description" : "Rate limit for requests",
+            "schema" : {
+              "$ref" : "#/definitions/Error"
+            },
+            "headers" : {
+              "Retry-After" : {
+                "type" : "number",
+                "format" : "integer",
+                "description" : "Retry after X seconds"
+              }
+            }
+          },
+          "default" : {
+            "description" : "Unexpected error",
+            "schema" : {
+              "$ref" : "#/definitions/Error"
+            }
+          }
+        }
+      }
+    },
+    "/catalog/models/referenceDataTypes/{id}" : {
+      "get" : {
+        "tags" : [ "Catalog", "Model Info" ],
+        "summary" : "Reference Data Type",
+        "parameters" : [ {
+          "name" : "id",
+          "in" : "path",
+          "required" : true,
+          "type" : "string",
+          "pattern" : "[^.]+[.].*[^.]"
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "Reference Data Type",
+            "schema" : {
+              "$ref" : "#/definitions/RefDataTypeResponse"
+            }
+          },
+          "401" : {
+            "description" : "Missing credentials",
+            "schema" : {
+              "$ref" : "#/definitions/Error"
+            }
+          },
+          "403" : {
+            "description" : "User does not have access permission",
+            "schema" : {
+              "$ref" : "#/definitions/Error"
+            }
+          },
+          "404" : {
+            "description" : "Requested object not found",
+            "schema" : {
+              "$ref" : "#/definitions/Error"
+            }
+          },
+          "429" : {
+            "description" : "Rate limit for requests",
+            "schema" : {
+              "$ref" : "#/definitions/Error"
+            },
+            "headers" : {
+              "Retry-After" : {
+                "type" : "number",
+                "format" : "integer",
+                "description" : "Retry after X seconds"
+              }
+            }
+          },
+          "default" : {
+            "description" : "Unexpected error",
+            "schema" : {
+              "$ref" : "#/definitions/Error"
+            }
+          }
+        }
+      }
+    },
+    "/catalog/models/referenceAttributes" : {
+      "get" : {
+        "tags" : [ "Catalog", "Model Info" ],
+        "summary" : "Reference Attributes",
+        "description" : "List reference attributes",
+        "parameters" : [ {
+          "name" : "id",
+          "in" : "query",
+          "required" : false,
+          "type" : "array",
+          "items" : {
+            "type" : "string",
+            "pattern" : "[^.]+[.].*[^.]"
+          },
+          "collectionFormat" : "multi"
+        }, {
+          "name" : "classId",
+          "in" : "query",
+          "description" : "Filter attributes by class they may apply to",
+          "required" : false,
+          "type" : "array",
+          "items" : {
+            "type" : "string"
+          },
+          "collectionFormat" : "multi"
+        }, {
+          "name" : "offset",
+          "in" : "query",
+          "description" : "Starting from result",
+          "required" : false,
+          "type" : "number",
+          "default" : 0.0,
+          "minimum" : 0,
+          "format" : "int32"
+        }, {
+          "name" : "pageSize",
+          "in" : "query",
+          "description" : "Results per page",
+          "required" : false,
+          "type" : "number",
+          "default" : 20.0,
+          "minimum" : 1,
+          "format" : "int32"
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "List of reference attributes",
+            "schema" : {
+              "$ref" : "#/definitions/RefAttributesResponse"
+            }
+          },
+          "400" : {
+            "description" : "Missing or invalid parameter",
+            "schema" : {
+              "$ref" : "#/definitions/Error"
+            }
+          },
+          "401" : {
+            "description" : "Missing credentials",
+            "schema" : {
+              "$ref" : "#/definitions/Error"
+            }
+          },
+          "403" : {
+            "description" : "User does not have access permission",
+            "schema" : {
+              "$ref" : "#/definitions/Error"
+            }
+          },
+          "429" : {
+            "description" : "Rate limit for requests",
+            "schema" : {
+              "$ref" : "#/definitions/Error"
+            },
+            "headers" : {
+              "Retry-After" : {
+                "type" : "number",
+                "format" : "integer",
+                "description" : "Retry after X seconds"
+              }
+            }
+          },
+          "default" : {
+            "description" : "Unexpected error",
+            "schema" : {
+              "$ref" : "#/definitions/Error"
+            }
+          }
+        }
+      },
+      "post" : {
+        "tags" : [ "Catalog", "Model Modification" ],
+        "summary" : "Create Reference Attributes",
+        "description" : "Create new custom reference attributes.",
+        "parameters" : [ {
+          "in" : "body",
+          "name" : "attributes",
+          "required" : true,
+          "schema" : {
+            "$ref" : "#/definitions/RefAttributesPost"
+          }
+        } ],
+        "responses" : {
+          "201" : {
+            "description" : "Created reference attributes",
+            "schema" : {
+              "$ref" : "#/definitions/RefAttributesResponse"
+            },
+            "headers" : {
+              "ETag" : {
+                "type" : "string",
+                "description" : "Send as If-Match value"
+              }
+            }
+          },
+          "400" : {
+            "description" : "Missing or invalid parameter",
+            "schema" : {
+              "$ref" : "#/definitions/Error"
+            }
+          },
+          "401" : {
+            "description" : "Missing credentials",
+            "schema" : {
+              "$ref" : "#/definitions/Error"
+            }
+          },
+          "403" : {
+            "description" : "User does not have access permission",
+            "schema" : {
+              "$ref" : "#/definitions/Error"
+            }
+          },
+          "429" : {
+            "description" : "Rate limit for requests",
+            "schema" : {
+              "$ref" : "#/definitions/Error"
+            },
+            "headers" : {
+              "Retry-After" : {
+                "type" : "number",
+                "format" : "integer",
+                "description" : "Retry after X seconds"
+              }
+            }
+          },
+          "default" : {
+            "description" : "Unexpected error",
+            "schema" : {
+              "$ref" : "#/definitions/Error"
+            }
+          }
+        }
+      }
+    },
+    "/catalog/models/referenceAttributes/{id}" : {
+      "get" : {
+        "tags" : [ "Catalog", "Model Info" ],
+        "summary" : "Reference Attribute",
+        "description" : "Reference Attribute details",
+        "parameters" : [ {
+          "name" : "id",
+          "in" : "path",
+          "required" : true,
+          "type" : "string",
+          "pattern" : "[^.]+[.].*[^.]"
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "Reference Attribute",
+            "schema" : {
+              "$ref" : "#/definitions/RefAttributeResponse"
+            },
+            "headers" : {
+              "ETag" : {
+                "type" : "string",
+                "description" : "Send as If-Match value"
+              }
+            }
+          },
+          "401" : {
+            "description" : "Missing credentials",
+            "schema" : {
+              "$ref" : "#/definitions/Error"
+            }
+          },
+          "403" : {
+            "description" : "User does not have access permission",
+            "schema" : {
+              "$ref" : "#/definitions/Error"
+            }
+          },
+          "404" : {
+            "description" : "Requested object not found",
+            "schema" : {
+              "$ref" : "#/definitions/Error"
+            }
+          },
+          "429" : {
+            "description" : "Rate limit for requests",
+            "schema" : {
+              "$ref" : "#/definitions/Error"
+            },
+            "headers" : {
+              "Retry-After" : {
+                "type" : "number",
+                "format" : "integer",
+                "description" : "Retry after X seconds"
+              }
+            }
+          },
+          "default" : {
+            "description" : "Unexpected error",
+            "schema" : {
+              "$ref" : "#/definitions/Error"
+            }
+          }
+        }
+      },
+      "put" : {
+        "tags" : [ "Catalog", "Model Modification" ],
+        "summary" : "Update Reference Attribute",
+        "description" : "Update a reference attribute. Indexing may be required after invoking this.",
+        "parameters" : [ {
+          "name" : "id",
+          "in" : "path",
+          "required" : true,
+          "type" : "string",
+          "pattern" : "[^.]+[.].*[^.]"
+        }, {
+          "in" : "body",
+          "name" : "attribute",
+          "required" : true,
+          "schema" : {
+            "$ref" : "#/definitions/RefAttributePut"
+          }
+        }, {
+          "name" : "If-Match",
+          "in" : "header",
+          "description" : "Do not update if etag for resource has changed",
+          "required" : false,
+          "type" : "string"
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "Reference Attribute",
+            "schema" : {
+              "$ref" : "#/definitions/RefAttributeResponse"
+            },
+            "headers" : {
+              "ETag" : {
+                "type" : "string",
+                "description" : "Send as If-Match value"
+              }
+            }
+          },
+          "400" : {
+            "description" : "Missing or invalid parameter",
+            "schema" : {
+              "$ref" : "#/definitions/Error"
+            }
+          },
+          "401" : {
+            "description" : "Missing credentials",
+            "schema" : {
+              "$ref" : "#/definitions/Error"
+            }
+          },
+          "403" : {
+            "description" : "User does not have access permission",
+            "schema" : {
+              "$ref" : "#/definitions/Error"
+            }
+          },
+          "404" : {
+            "description" : "Requested object not found",
+            "schema" : {
+              "$ref" : "#/definitions/Error"
+            }
+          },
+          "412" : {
+            "description" : "Conflicting edit detected",
+            "schema" : {
+              "$ref" : "#/definitions/Error"
+            }
+          },
+          "429" : {
+            "description" : "Rate limit for requests",
+            "schema" : {
+              "$ref" : "#/definitions/Error"
+            },
+            "headers" : {
+              "Retry-After" : {
+                "type" : "number",
+                "format" : "integer",
+                "description" : "Retry after X seconds"
+              }
+            }
+          },
+          "default" : {
+            "description" : "Unexpected error",
+            "schema" : {
+              "$ref" : "#/definitions/Error"
+            }
+          }
+        }
+      },
+      "delete" : {
+        "tags" : [ "Catalog", "Model Modification" ],
+        "summary" : "Delete Reference Attribute",
+        "parameters" : [ {
+          "name" : "id",
+          "in" : "path",
+          "required" : true,
+          "type" : "string",
+          "pattern" : "[^.]+[.].*[^.]"
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "Response"
+          },
+          "401" : {
+            "description" : "Missing credentials",
+            "schema" : {
+              "$ref" : "#/definitions/Error"
+            }
+          },
+          "403" : {
+            "description" : "User does not have access permission",
+            "schema" : {
+              "$ref" : "#/definitions/Error"
+            }
+          },
+          "404" : {
+            "description" : "Requested object not found",
+            "schema" : {
+              "$ref" : "#/definitions/Error"
+            }
+          },
+          "429" : {
+            "description" : "Rate limit for requests",
+            "schema" : {
+              "$ref" : "#/definitions/Error"
+            },
+            "headers" : {
+              "Retry-After" : {
+                "type" : "number",
+                "format" : "integer",
+                "description" : "Retry after X seconds"
+              }
+            }
+          },
+          "default" : {
+            "description" : "Unexpected error",
+            "schema" : {
+              "$ref" : "#/definitions/Error"
+            }
+          }
+        }
+      }
+    },
+    "/catalog/models/attributes" : {
+      "get" : {
+        "tags" : [ "Catalog", "Model Info" ],
+        "summary" : "Attributes",
+        "description" : "List attributes",
+        "parameters" : [ {
+          "name" : "id",
+          "in" : "query",
+          "required" : false,
+          "type" : "array",
+          "items" : {
+            "type" : "string",
+            "pattern" : "[^.]+[.].*[^.]"
+          },
+          "collectionFormat" : "multi"
+        }, {
+          "name" : "classId",
+          "in" : "query",
+          "description" : "Filter attributes by class",
+          "required" : false,
+          "type" : "array",
+          "items" : {
+            "type" : "string"
+          },
+          "collectionFormat" : "multi"
+        }, {
+          "name" : "offset",
+          "in" : "query",
+          "description" : "Starting from result",
+          "required" : false,
+          "type" : "number",
+          "default" : 0.0,
+          "minimum" : 0,
+          "format" : "int32"
+        }, {
+          "name" : "pageSize",
+          "in" : "query",
+          "description" : "Results per page",
+          "required" : false,
+          "type" : "number",
+          "default" : 20.0,
+          "minimum" : 1,
+          "format" : "int32"
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "List of attributes",
+            "schema" : {
+              "$ref" : "#/definitions/AttributesResponse"
+            }
+          },
+          "400" : {
+            "description" : "Missing or invalid parameter",
+            "schema" : {
+              "$ref" : "#/definitions/Error"
+            }
+          },
+          "401" : {
+            "description" : "Missing credentials",
+            "schema" : {
+              "$ref" : "#/definitions/Error"
+            }
+          },
+          "403" : {
+            "description" : "User does not have access permission",
+            "schema" : {
+              "$ref" : "#/definitions/Error"
+            }
+          },
+          "429" : {
+            "description" : "Rate limit for requests",
+            "schema" : {
+              "$ref" : "#/definitions/Error"
+            },
+            "headers" : {
+              "Retry-After" : {
+                "type" : "number",
+                "format" : "integer",
+                "description" : "Retry after X seconds"
+              }
+            }
+          },
+          "default" : {
+            "description" : "Unexpected error",
+            "schema" : {
+              "$ref" : "#/definitions/Error"
+            }
+          }
+        }
+      },
+      "post" : {
+        "tags" : [ "Catalog", "Model Modification" ],
+        "summary" : "Create Attributes",
+        "description" : "Create new custom attributes.",
+        "parameters" : [ {
+          "in" : "body",
+          "name" : "attributes",
+          "required" : true,
+          "schema" : {
+            "$ref" : "#/definitions/AttributesRequest"
+          }
+        } ],
+        "responses" : {
+          "201" : {
+            "description" : "Created attributes",
+            "schema" : {
+              "$ref" : "#/definitions/AttributesResponse"
+            },
+            "headers" : {
+              "ETag" : {
+                "type" : "string",
+                "description" : "Send as If-Match value"
+              }
+            }
+          },
+          "400" : {
+            "description" : "Missing or invalid parameter",
+            "schema" : {
+              "$ref" : "#/definitions/Error"
+            }
+          },
+          "401" : {
+            "description" : "Missing credentials",
+            "schema" : {
+              "$ref" : "#/definitions/Error"
+            }
+          },
+          "403" : {
+            "description" : "User does not have access permission",
+            "schema" : {
+              "$ref" : "#/definitions/Error"
+            }
+          },
+          "429" : {
+            "description" : "Rate limit for requests",
+            "schema" : {
+              "$ref" : "#/definitions/Error"
+            },
+            "headers" : {
+              "Retry-After" : {
+                "type" : "number",
+                "format" : "integer",
+                "description" : "Retry after X seconds"
+              }
+            }
+          },
+          "default" : {
+            "description" : "Unexpected error",
+            "schema" : {
+              "$ref" : "#/definitions/Error"
+            }
+          }
+        }
+      }
+    },
+    "/catalog/models/attributes/{id}" : {
+      "get" : {
+        "tags" : [ "Catalog", "Model Info" ],
+        "summary" : "Attribute",
+        "description" : "Attribute details",
+        "parameters" : [ {
+          "name" : "id",
+          "in" : "path",
+          "required" : true,
+          "type" : "string",
+          "pattern" : "[^.]+[.].*[^.]"
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "Attribute",
+            "schema" : {
+              "$ref" : "#/definitions/AttributeResponse"
+            },
+            "headers" : {
+              "ETag" : {
+                "type" : "string",
+                "description" : "Send as If-Match value"
+              }
+            }
+          },
+          "401" : {
+            "description" : "Missing credentials",
+            "schema" : {
+              "$ref" : "#/definitions/Error"
+            }
+          },
+          "403" : {
+            "description" : "User does not have access permission",
+            "schema" : {
+              "$ref" : "#/definitions/Error"
+            }
+          },
+          "404" : {
+            "description" : "Requested object not found",
+            "schema" : {
+              "$ref" : "#/definitions/Error"
+            }
+          },
+          "429" : {
+            "description" : "Rate limit for requests",
+            "schema" : {
+              "$ref" : "#/definitions/Error"
+            },
+            "headers" : {
+              "Retry-After" : {
+                "type" : "number",
+                "format" : "integer",
+                "description" : "Retry after X seconds"
+              }
+            }
+          },
+          "default" : {
+            "description" : "Unexpected error",
+            "schema" : {
+              "$ref" : "#/definitions/Error"
+            }
+          }
+        }
+      },
+      "put" : {
+        "tags" : [ "Catalog", "Model Modification" ],
+        "summary" : "Update Attribute",
+        "description" : "Update an attribute. Indexing may be required after invoking this.",
+        "parameters" : [ {
+          "name" : "id",
+          "in" : "path",
+          "required" : true,
+          "type" : "string",
+          "pattern" : "[^.]+[.].*[^.]"
+        }, {
+          "in" : "body",
+          "name" : "attribute",
+          "required" : true,
+          "schema" : {
+            "$ref" : "#/definitions/AttributePutRequest"
+          }
+        }, {
+          "name" : "If-Match",
+          "in" : "header",
+          "description" : "Do not update if etag for resource has changed",
+          "required" : false,
+          "type" : "string"
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "Attribute",
+            "schema" : {
+              "$ref" : "#/definitions/AttributeResponse"
+            },
+            "headers" : {
+              "ETag" : {
+                "type" : "string",
+                "description" : "Send as If-Match value"
+              }
+            }
+          },
+          "400" : {
+            "description" : "Missing or invalid parameter",
+            "schema" : {
+              "$ref" : "#/definitions/Error"
+            }
+          },
+          "401" : {
+            "description" : "Missing credentials",
+            "schema" : {
+              "$ref" : "#/definitions/Error"
+            }
+          },
+          "403" : {
+            "description" : "User does not have access permission",
+            "schema" : {
+              "$ref" : "#/definitions/Error"
+            }
+          },
+          "404" : {
+            "description" : "Requested object not found",
+            "schema" : {
+              "$ref" : "#/definitions/Error"
+            }
+          },
+          "412" : {
+            "description" : "Conflicting edit detected",
+            "schema" : {
+              "$ref" : "#/definitions/Error"
+            }
+          },
+          "429" : {
+            "description" : "Rate limit for requests",
+            "schema" : {
+              "$ref" : "#/definitions/Error"
+            },
+            "headers" : {
+              "Retry-After" : {
+                "type" : "number",
+                "format" : "integer",
+                "description" : "Retry after X seconds"
+              }
+            }
+          },
+          "default" : {
+            "description" : "Unexpected error",
+            "schema" : {
+              "$ref" : "#/definitions/Error"
+            }
+          }
+        }
+      },
+      "delete" : {
+        "tags" : [ "Catalog", "Model Modification" ],
+        "summary" : "Delete Attribute",
+        "parameters" : [ {
+          "name" : "id",
+          "in" : "path",
+          "required" : true,
+          "type" : "string",
+          "pattern" : "[^.]+[.].*[^.]"
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "Response"
+          },
+          "401" : {
+            "description" : "Missing credentials",
+            "schema" : {
+              "$ref" : "#/definitions/Error"
+            }
+          },
+          "403" : {
+            "description" : "User does not have access permission",
+            "schema" : {
+              "$ref" : "#/definitions/Error"
+            }
+          },
+          "404" : {
+            "description" : "Requested object not found",
+            "schema" : {
+              "$ref" : "#/definitions/Error"
+            }
+          },
+          "429" : {
+            "description" : "Rate limit for requests",
+            "schema" : {
+              "$ref" : "#/definitions/Error"
+            },
+            "headers" : {
+              "Retry-After" : {
+                "type" : "number",
+                "format" : "integer",
+                "description" : "Retry after X seconds"
+              }
+            }
+          },
+          "default" : {
+            "description" : "Unexpected error",
+            "schema" : {
+              "$ref" : "#/definitions/Error"
+            }
+          }
+        }
+      }
+    },
+    "/catalog/data/relationships" : {
+      "get" : {
+        "tags" : [ "Catalog", "Object Info" ],
+        "summary" : "Objects",
+        "description" : "The objects endpoint returns objects stored in the catalog",
+        "parameters" : [ {
+          "name" : "seed",
+          "in" : "query",
+          "description" : "ID of the object from which to start",
+          "required" : true,
+          "type" : "array",
+          "items" : {
+            "type" : "string"
+          },
+          "collectionFormat" : "multi"
+        }, {
+          "name" : "association",
+          "in" : "query",
+          "description" : "The association to traverse. Can be either an association or association kind.",
+          "required" : true,
+          "type" : "array",
+          "items" : {
+            "type" : "string"
+          },
+          "collectionFormat" : "multi"
+        }, {
+          "name" : "direction",
+          "in" : "query",
+          "description" : "Direction to traverse. Valid values BOTH, IN, OUT",
+          "required" : false,
+          "type" : "string",
+          "default" : "BOTH",
+          "enum" : [ "IN", "OUT", "BOTH" ]
+        }, {
+          "name" : "removeDuplicateAggregateLinks",
+          "in" : "query",
+          "description" : "Duplicate aggregate links are somtimes created by scanners, when set to true they will not be displayed in responses.",
+          "required" : false,
+          "type" : "boolean",
+          "default" : true
+        }, {
+          "name" : "depth",
+          "in" : "query",
+          "description" : "Depth of traversal. Valid values [0,N). 0 means traverse fully, any other integer means return links upto N hops from the seed node.",
+          "required" : true,
+          "type" : "number",
+          "minimum" : 0,
+          "format" : "int"
+        }, {
+          "name" : "includeTerms",
+          "in" : "query",
+          "description" : "If  true, connected business terms will be embedded in the response.",
+          "required" : false,
+          "type" : "boolean",
+          "default" : false
+        }, {
+          "name" : "includeAttribute",
+          "in" : "query",
+          "description" : "Facts with the given attribute id will be embedded in the response.",
+          "required" : false,
+          "type" : "array",
+          "items" : {
+            "type" : "string"
+          },
+          "collectionFormat" : "multi"
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "An array of links",
+            "schema" : {
+              "$ref" : "#/definitions/Links"
+            }
+          },
+          "400" : {
+            "description" : "Missing or invalid parameter",
+            "schema" : {
+              "$ref" : "#/definitions/Error"
+            }
+          },
+          "401" : {
+            "description" : "Missing credentials",
+            "schema" : {
+              "$ref" : "#/definitions/Error"
+            }
+          },
+          "403" : {
+            "description" : "User does not have access permission",
+            "schema" : {
+              "$ref" : "#/definitions/Error"
+            }
+          },
+          "429" : {
+            "description" : "Rate limit for requests",
+            "schema" : {
+              "$ref" : "#/definitions/Error"
+            },
+            "headers" : {
+              "Retry-After" : {
+                "type" : "number",
+                "format" : "integer",
+                "description" : "Retry after X seconds"
+              }
+            }
+          },
+          "default" : {
+            "description" : "Unexpected error",
+            "schema" : {
+              "$ref" : "#/definitions/Error"
+            }
+          }
+        }
+      }
+    },
+    "/catalog/data/objects" : {
+      "get" : {
+        "tags" : [ "Catalog", "Object Info" ],
+        "summary" : "Objects",
+        "description" : "The objects endpoint returns objects stored in the catalog",
+        "parameters" : [ {
+          "name" : "q",
+          "in" : "query",
+          "description" : "Search query to match objects. [Lucene Query Syntax](https://lucene.apache.org/core/2_9_4/queryparsersyntax.html)",
+          "required" : false,
+          "type" : "string"
+        }, {
+          "name" : "id",
+          "in" : "query",
+          "required" : false,
+          "type" : "array",
+          "items" : {
+            "type" : "string"
+          },
+          "collectionFormat" : "multi"
+        }, {
+          "name" : "offset",
+          "in" : "query",
+          "description" : "Starting from result",
+          "required" : false,
+          "type" : "number",
+          "default" : 0.0,
+          "minimum" : 0,
+          "format" : "int32"
+        }, {
+          "name" : "pageSize",
+          "in" : "query",
+          "description" : "Results per page",
+          "required" : false,
+          "type" : "number",
+          "default" : 20.0,
+          "minimum" : 1,
+          "format" : "int32"
+        }, {
+          "name" : "related",
+          "in" : "query",
+          "description" : "Return related objects, q must also be specified",
+          "required" : false,
+          "type" : "boolean",
+          "default" : false
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "An array of objects",
+            "schema" : {
+              "$ref" : "#/definitions/ObjectsResponse"
+            },
+            "headers" : {
+              "ETag" : {
+                "type" : "string",
+                "description" : "Send as If-Match value"
+              }
+            }
+          },
+          "400" : {
+            "description" : "Missing or invalid parameter",
+            "schema" : {
+              "$ref" : "#/definitions/Error"
+            }
+          },
+          "401" : {
+            "description" : "Missing credentials",
+            "schema" : {
+              "$ref" : "#/definitions/Error"
+            }
+          },
+          "403" : {
+            "description" : "User does not have access permission",
+            "schema" : {
+              "$ref" : "#/definitions/Error"
+            }
+          },
+          "429" : {
+            "description" : "Rate limit for requests",
+            "schema" : {
+              "$ref" : "#/definitions/Error"
+            },
+            "headers" : {
+              "Retry-After" : {
+                "type" : "number",
+                "format" : "integer",
+                "description" : "Retry after X seconds"
+              }
+            }
+          },
+          "default" : {
+            "description" : "Unexpected error",
+            "schema" : {
+              "$ref" : "#/definitions/Error"
+            }
+          }
+        }
+      },
+      "put" : {
+        "tags" : [ "Catalog", "Object Modification" ],
+        "summary" : "Update Objects",
+        "description" : "Update multiple objects' custom properties.",
+        "parameters" : [ {
+          "in" : "body",
+          "name" : "objects",
+          "required" : true,
+          "schema" : {
+            "$ref" : "#/definitions/ObjectsRequest"
+          }
+        }, {
+          "name" : "If-Match",
+          "in" : "header",
+          "description" : "Do not update if etag for resource has changed",
+          "required" : false,
+          "type" : "string"
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "An array of objects",
+            "schema" : {
+              "$ref" : "#/definitions/ObjectsResponse"
+            },
+            "headers" : {
+              "ETag" : {
+                "type" : "string",
+                "description" : "Send as If-Match value"
+              }
+            }
+          },
+          "400" : {
+            "description" : "Missing or invalid parameter",
+            "schema" : {
+              "$ref" : "#/definitions/Error"
+            }
+          },
+          "401" : {
+            "description" : "Missing credentials",
+            "schema" : {
+              "$ref" : "#/definitions/Error"
+            }
+          },
+          "403" : {
+            "description" : "User does not have access permission",
+            "schema" : {
+              "$ref" : "#/definitions/Error"
+            }
+          },
+          "412" : {
+            "description" : "Conflicting edit detected",
+            "schema" : {
+              "$ref" : "#/definitions/Error"
+            }
+          },
+          "429" : {
+            "description" : "Rate limit for requests",
+            "schema" : {
+              "$ref" : "#/definitions/Error"
+            },
+            "headers" : {
+              "Retry-After" : {
+                "type" : "number",
+                "format" : "integer",
+                "description" : "Retry after X seconds"
+              }
+            }
+          },
+          "default" : {
+            "description" : "Unexpected error",
+            "schema" : {
+              "$ref" : "#/definitions/Error"
+            }
+          }
+        }
+      }
+    },
+    "/catalog/data/objects/{id}" : {
+      "get" : {
+        "tags" : [ "Catalog", "Object Info" ],
+        "summary" : "Object",
+        "description" : "Return details on a single object",
+        "parameters" : [ {
+          "name" : "id",
+          "in" : "path",
+          "required" : true,
+          "type" : "string"
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "An object",
+            "schema" : {
+              "$ref" : "#/definitions/ObjectResponse"
+            },
+            "headers" : {
+              "ETag" : {
+                "type" : "string",
+                "description" : "Send as If-Match value"
+              }
+            }
+          },
+          "400" : {
+            "description" : "Missing or invalid parameter",
+            "schema" : {
+              "$ref" : "#/definitions/Error"
+            }
+          },
+          "401" : {
+            "description" : "Missing credentials",
+            "schema" : {
+              "$ref" : "#/definitions/Error"
+            }
+          },
+          "403" : {
+            "description" : "User does not have access permission",
+            "schema" : {
+              "$ref" : "#/definitions/Error"
+            }
+          },
+          "404" : {
+            "description" : "Requested object not found",
+            "schema" : {
+              "$ref" : "#/definitions/Error"
+            }
+          },
+          "429" : {
+            "description" : "Rate limit for requests",
+            "schema" : {
+              "$ref" : "#/definitions/Error"
+            },
+            "headers" : {
+              "Retry-After" : {
+                "type" : "number",
+                "format" : "integer",
+                "description" : "Retry after X seconds"
+              }
+            }
+          },
+          "default" : {
+            "description" : "Unexpected error",
+            "schema" : {
+              "$ref" : "#/definitions/Error"
+            }
+          }
+        }
+      },
+      "put" : {
+        "tags" : [ "Catalog", "Object Modification" ],
+        "summary" : "Update Object",
+        "description" : "Update custom object properties",
+        "parameters" : [ {
+          "name" : "id",
+          "in" : "path",
+          "required" : true,
+          "type" : "string"
+        }, {
+          "in" : "body",
+          "name" : "object",
+          "required" : true,
+          "schema" : {
+            "$ref" : "#/definitions/ObjectIdRequest"
+          }
+        }, {
+          "name" : "If-Match",
+          "in" : "header",
+          "description" : "Do not update if etag for resource has changed",
+          "required" : false,
+          "type" : "string"
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "An object",
+            "schema" : {
+              "$ref" : "#/definitions/ObjectResponse"
+            },
+            "headers" : {
+              "ETag" : {
+                "type" : "string",
+                "description" : "Send as If-Match value"
+              }
+            }
+          },
+          "400" : {
+            "description" : "Missing or invalid parameter",
+            "schema" : {
+              "$ref" : "#/definitions/Error"
+            }
+          },
+          "401" : {
+            "description" : "Missing credentials",
+            "schema" : {
+              "$ref" : "#/definitions/Error"
+            }
+          },
+          "403" : {
+            "description" : "User does not have access permission",
+            "schema" : {
+              "$ref" : "#/definitions/Error"
+            }
+          },
+          "404" : {
+            "description" : "Requested object not found",
+            "schema" : {
+              "$ref" : "#/definitions/Error"
+            }
+          },
+          "412" : {
+            "description" : "Conflicting edit detected",
+            "schema" : {
+              "$ref" : "#/definitions/Error"
+            }
+          },
+          "429" : {
+            "description" : "Rate limit for requests",
+            "schema" : {
+              "$ref" : "#/definitions/Error"
+            },
+            "headers" : {
+              "Retry-After" : {
+                "type" : "number",
+                "format" : "integer",
+                "description" : "Retry after X seconds"
+              }
+            }
+          },
+          "default" : {
+            "description" : "Unexpected error",
+            "schema" : {
+              "$ref" : "#/definitions/Error"
+            }
+          }
+        }
+      }
+    }
+  },
+  "securityDefinitions" : {
+    "apiKey" : {
+      "type" : "apiKey",
+      "name" : "isp_key",
+      "in" : "header"
+    },
+    "basic" : {
+      "type" : "basic"
+    }
+  },
+  "definitions" : {
+    "ResourceResponse" : {
+      "type" : "object",
+      "properties" : {
+        "id" : {
+          "type" : "string",
+          "description" : "Unique id"
+        },
+        "href" : {
+          "type" : "string",
+          "description" : "Link to resource. Relative the the base path"
+        }
+      },
+      "description" : "Common properties returned in resource responses."
+    },
+    "CollectionResponseMetadata" : {
+      "type" : "object",
+      "properties" : {
+        "totalCount" : {
+          "type" : "number",
+          "format" : "long",
+          "description" : "Total number of results",
+          "readOnly" : true
+        }
+      }
+    },
+    "CollectionResponse" : {
+      "type" : "object",
+      "properties" : {
+        "metadata" : {
+          "$ref" : "#/definitions/CollectionResponseMetadata"
+        }
+      },
+      "description" : "A response from the API returning multiple items"
+    },
+    "Error" : {
+      "type" : "object",
+      "properties" : {
+        "code" : {
+          "type" : "integer",
+          "format" : "int32"
+        },
+        "message" : {
+          "type" : "string"
+        }
+      }
+    },
+    "Name" : {
+      "type" : "object",
+      "required" : [ "name" ],
+      "properties" : {
+        "name" : {
+          "type" : "string",
+          "pattern" : "[a-zA-Z0-9 _-]+"
+        }
+      }
+    },
+    "FileInfo" : {
+      "allOf" : [ {
+        "$ref" : "#/definitions/ResourceResponse"
+      }, {
+        "type" : "object",
+        "properties" : {
+          "name" : {
+            "type" : "string"
+          },
+          "length" : {
+            "type" : "number",
+            "format" : "long"
+          }
+        }
+      } ]
+    },
+    "FileInfos" : {
+      "allOf" : [ {
+        "$ref" : "#/definitions/CollectionResponse"
+      }, {
+        "type" : "object",
+        "properties" : {
+          "items" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/definitions/FileInfo"
+            }
+          }
+        }
+      } ]
+    },
+    "EmbeddedFact" : {
+      "allOf" : [ {
+        "$ref" : "#/definitions/FactRequest"
+      }, {
+        "type" : "object",
+        "properties" : {
+          "label" : {
+            "type" : "string",
+            "description" : "Attribute label"
+          }
+        }
+      } ],
+      "description" : "A lightweight fact to be embedded in a linked object"
+    },
+    "EmbeddedObject" : {
+      "type" : "object",
+      "properties" : {
+        "facts" : {
+          "type" : "array",
+          "description" : "Facts about the object",
+          "items" : {
+            "$ref" : "#/definitions/EmbeddedFact"
+          }
+        },
+        "businessTerms" : {
+          "type" : "array",
+          "description" : "Associated business terms",
+          "items" : {
+            "$ref" : "#/definitions/ObjectRefResponse"
+          }
+        }
+      },
+      "description" : "Details about a linked object"
+    },
+    "Link" : {
+      "type" : "object",
+      "properties" : {
+        "associationId" : {
+          "type" : "string",
+          "description" : "The type of the link"
+        },
+        "outResource" : {
+          "type" : "string",
+          "description" : "The name of the resource out belongs to."
+        },
+        "outId" : {
+          "type" : "string",
+          "description" : "The id of the object for which this link is outgoing. The source."
+        },
+        "inResource" : {
+          "type" : "string",
+          "description" : "The name of the resource in belongs to."
+        },
+        "inId" : {
+          "type" : "string",
+          "description" : "The id of the object for which this link is incoming. The destination."
+        },
+        "properties" : {
+          "type" : "array",
+          "description" : "Properties that have been set on the link.",
+          "items" : {
+            "$ref" : "#/definitions/LinkPropertyResponse"
+          }
+        },
+        "outEmbedded" : {
+          "$ref" : "#/definitions/EmbeddedObject"
+        },
+        "inEmbedded" : {
+          "$ref" : "#/definitions/EmbeddedObject"
+        }
+      },
+      "description" : "A relationship between two objects"
+    },
+    "Links" : {
+      "type" : "object",
+      "properties" : {
+        "items" : {
+          "type" : "array",
+          "items" : {
+            "$ref" : "#/definitions/Link"
+          }
+        }
+      }
+    },
+    "FactRequest" : {
+      "type" : "object",
+      "required" : [ "attributeId" ],
+      "properties" : {
+        "attributeId" : {
+          "type" : "string",
+          "description" : "Attribute id",
+          "pattern" : "[^.]+[.].+"
+        },
+        "value" : {
+          "type" : "string",
+          "description" : "Fact value"
+        },
+        "projectedFrom" : {
+          "type" : "string",
+          "description" : "Id of object from which this fact was projected. Value is ignored if this is supplied.",
+          "pattern" : ".+://.+"
+        },
+        "readOnly" : {
+          "type" : "boolean",
+          "description" : "Certain facts cannot be modified. These fact need not be included in any requests to the server."
+        }
+      },
+      "description" : "A piece of information about an object to be used in requests"
+    },
+    "FactResponse" : {
+      "allOf" : [ {
+        "$ref" : "#/definitions/FactRequest"
+      }, {
+        "type" : "object",
+        "properties" : {
+          "label" : {
+            "type" : "string",
+            "description" : "Attribute label"
+          },
+          "description" : {
+            "type" : "string",
+            "description" : "Attribute description"
+          },
+          "providerId" : {
+            "type" : "string",
+            "description" : "Asserter of the fact"
+          },
+          "xid" : {
+            "type" : "string",
+            "description" : "Exchange document containing the fact"
+          },
+          "modifiedBy" : {
+            "type" : "string",
+            "description" : "User that has modified the fact"
+          },
+          "projectedFrom" : {
+            "type" : "string",
+            "description" : "Object id the fact value was projected from"
+          }
+        }
+      } ],
+      "description" : "A piece of information about an object"
+    },
+    "LinkPropertyRequest" : {
+      "type" : "object",
+      "required" : [ "attributeId" ],
+      "properties" : {
+        "attributeId" : {
+          "type" : "string",
+          "description" : "Attribute id",
+          "pattern" : "[^.]+[.].+"
+        },
+        "value" : {
+          "type" : "string",
+          "description" : "Property value"
+        }
+      },
+      "description" : "A property set on a link"
+    },
+    "LinkPropertyResponse" : {
+      "allOf" : [ {
+        "$ref" : "#/definitions/LinkPropertyRequest"
+      }, {
+        "type" : "object",
+        "properties" : {
+          "label" : {
+            "type" : "string",
+            "description" : "Attribute label"
+          }
+        }
+      } ],
+      "description" : "A property set on a link"
+    },
+    "LinkedObjectRequest" : {
+      "allOf" : [ {
+        "$ref" : "#/definitions/ObjectRefRequest"
+      }, {
+        "type" : "object",
+        "required" : [ "association" ],
+        "properties" : {
+          "association" : {
+            "type" : "string",
+            "description" : "Association id",
+            "pattern" : "[^.]+[.].+"
+          },
+          "linkProperties" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/definitions/LinkPropertyRequest"
+            }
+          },
+          "readOnly" : {
+            "type" : "boolean",
+            "description" : "If true the link cannot be modified and it should not be included in requests."
+          }
+        }
+      } ],
+      "description" : "An object related to another object"
+    },
+    "LinkedObjectResponse" : {
+      "allOf" : [ {
+        "$ref" : "#/definitions/ResourceResponse"
+      }, {
+        "$ref" : "#/definitions/LinkedObjectRequest"
+      }, {
+        "type" : "object",
+        "properties" : {
+          "name" : {
+            "type" : "string"
+          },
+          "classType" : {
+            "type" : "string"
+          },
+          "providerId" : {
+            "type" : "string",
+            "description" : "Asserter of the link"
+          },
+          "xid" : {
+            "type" : "string",
+            "description" : "Exchange document containing the link"
+          },
+          "modifiedBy" : {
+            "type" : "string",
+            "description" : "User that has modified the link"
+          },
+          "linkProperties" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/definitions/LinkPropertyResponse"
+            }
+          }
+        },
+        "description" : "An object related to another object"
+      } ]
+    },
+    "ModelRefRequest" : {
+      "type" : "object",
+      "required" : [ "id" ],
+      "properties" : {
+        "id" : {
+          "type" : "string",
+          "description" : "Id of model resource",
+          "pattern" : "[^.]+[.].+"
+        }
+      },
+      "description" : "A reference to a model resource"
+    },
+    "ObjectRefRequest" : {
+      "type" : "object",
+      "required" : [ "id" ],
+      "properties" : {
+        "id" : {
+          "type" : "string",
+          "description" : "Id of object resource",
+          "pattern" : ".+://.+"
+        },
+        "readOnly" : {
+          "type" : "boolean",
+          "description" : "If true the reference cannot be modified and it should not be included in requests."
+        }
+      },
+      "description" : "A reference to an object resource"
+    },
+    "ObjectRefResponse" : {
+      "allOf" : [ {
+        "$ref" : "#/definitions/ObjectRefRequest"
+      }, {
+        "type" : "object",
+        "properties" : {
+          "href" : {
+            "type" : "string"
+          },
+          "name" : {
+            "type" : "string"
+          },
+          "classType" : {
+            "type" : "string"
+          }
+        }
+      } ],
+      "description" : "A reference to an object resource"
+    },
+    "ObjectIdRequest" : {
+      "type" : "object",
+      "properties" : {
+        "facts" : {
+          "type" : "array",
+          "description" : "List of facts applying to this object",
+          "items" : {
+            "$ref" : "#/definitions/FactRequest"
+          }
+        },
+        "srcLinks" : {
+          "type" : "array",
+          "description" : "Upstream objects",
+          "items" : {
+            "$ref" : "#/definitions/LinkedObjectRequest"
+          }
+        },
+        "businessTerms" : {
+          "type" : "array",
+          "description" : "Associated business terms",
+          "items" : {
+            "$ref" : "#/definitions/ObjectRefRequest"
+          }
+        }
+      },
+      "description" : "An object contains facts and links to other objects"
+    },
+    "ObjectRequest" : {
+      "allOf" : [ {
+        "$ref" : "#/definitions/ObjectIdRequest"
+      }, {
+        "type" : "object",
+        "properties" : {
+          "id" : {
+            "type" : "string",
+            "description" : "Id of object resource",
+            "pattern" : ".+://.+"
+          }
+        }
+      } ],
+      "description" : "An object contains facts and links to other objects"
+    },
+    "ObjectResponse" : {
+      "allOf" : [ {
+        "$ref" : "#/definitions/ResourceResponse"
+      }, {
+        "type" : "object",
+        "properties" : {
+          "seeAlsoHref" : {
+            "type" : "string",
+            "description" : "Certain objects maybe managed from an alternative endpoint (for instance Data Domains). In this case this link will point to that location."
+          },
+          "facts" : {
+            "type" : "array",
+            "description" : "List of facts applying to this object",
+            "items" : {
+              "$ref" : "#/definitions/FactResponse"
+            }
+          },
+          "srcLinks" : {
+            "type" : "array",
+            "description" : "Upstream objects",
+            "items" : {
+              "$ref" : "#/definitions/LinkedObjectResponse"
+            }
+          },
+          "dstLinks" : {
+            "type" : "array",
+            "description" : "Downstream objects",
+            "items" : {
+              "$ref" : "#/definitions/LinkedObjectResponse"
+            }
+          },
+          "businessTerms" : {
+            "type" : "array",
+            "description" : "Associated business terms",
+            "items" : {
+              "$ref" : "#/definitions/ObjectRefResponse"
+            }
+          }
+        }
+      } ]
+    },
+    "ObjectsRequest" : {
+      "type" : "object",
+      "properties" : {
+        "items" : {
+          "type" : "array",
+          "description" : "Page of objects",
+          "items" : {
+            "$ref" : "#/definitions/ObjectRequest"
+          }
+        }
+      }
+    },
+    "ObjectsResponse" : {
+      "allOf" : [ {
+        "$ref" : "#/definitions/CollectionResponse"
+      }, {
+        "type" : "object",
+        "properties" : {
+          "items" : {
+            "type" : "array",
+            "description" : "Page of objects",
+            "items" : {
+              "$ref" : "#/definitions/ObjectResponse"
+            }
+          }
+        }
+      } ]
+    },
+    "AbstractDataTypeResponse" : {
+      "type" : "object",
+      "required" : [ "constraintType" ],
+      "discriminator" : "constraintType",
+      "properties" : {
+        "constraintType" : {
+          "type" : "string",
+          "enum" : [ "RangeDtResopnse", "ListDtResponse", "RegexDtResponse", "NoneDtResponse" ]
+        }
+      }
+    },
+    "DataTypeResponse" : {
+      "allOf" : [ {
+        "$ref" : "#/definitions/AbstractDataTypeResponse"
+      }, {
+        "$ref" : "#/definitions/ResourceResponse"
+      }, {
+        "$ref" : "#/definitions/Name"
+      }, {
+        "type" : "object",
+        "properties" : {
+          "custom" : {
+            "type" : "boolean",
+            "description" : "True if this is a custom attribute"
+          }
+        }
+      } ]
+    },
+    "NoneDtResponse" : {
+      "allOf" : [ {
+        "$ref" : "#/definitions/DataTypeResponse"
+      }, {
+        "type" : "object",
+        "required" : [ "coreType" ],
+        "properties" : {
+          "coreType" : {
+            "type" : "string",
+            "description" : "Core type of this data type",
+            "enum" : [ "STRING", "DATE", "INTEGER", "BOOLEAN", "DECIMAL", "PATH", "CSV", "RICH_TEXT" ]
+          },
+          "availableAnalyzers" : {
+            "type" : "array",
+            "description" : "Valid analyzers for this data type",
+            "items" : {
+              "type" : "string"
+            }
+          },
+          "defaultAnalyzer" : {
+            "type" : "string",
+            "description" : "The default analyzer used for this type if none is selected"
+          }
+        }
+      } ]
+    },
+    "RangeDtResponse" : {
+      "allOf" : [ {
+        "$ref" : "#/definitions/NoneDtResponse"
+      }, {
+        "type" : "object",
+        "required" : [ "from", "to" ],
+        "properties" : {
+          "from" : {
+            "type" : "string"
+          },
+          "to" : {
+            "type" : "string"
+          }
+        }
+      } ]
+    },
+    "ListDtResponse" : {
+      "allOf" : [ {
+        "$ref" : "#/definitions/NoneDtResponse"
+      }, {
+        "type" : "object",
+        "properties" : {
+          "values" : {
+            "type" : "array",
+            "items" : {
+              "type" : "string"
+            }
+          }
+        }
+      } ]
+    },
+    "RegexDtResponse" : {
+      "allOf" : [ {
+        "$ref" : "#/definitions/NoneDtResponse"
+      }, {
+        "type" : "object",
+        "required" : [ "regex" ],
+        "properties" : {
+          "regex" : {
+            "type" : "string"
+          }
+        }
+      } ]
+    },
+    "DataTypesResponse" : {
+      "allOf" : [ {
+        "$ref" : "#/definitions/CollectionResponse"
+      }, {
+        "type" : "object",
+        "properties" : {
+          "items" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/definitions/AbstractDataTypeResponse"
+            }
+          }
+        }
+      } ]
+    },
+    "RefDataTypeResponse" : {
+      "allOf" : [ {
+        "$ref" : "#/definitions/ResourceResponse"
+      }, {
+        "$ref" : "#/definitions/Name"
+      }, {
+        "type" : "object",
+        "properties" : {
+          "defaultAssociationId" : {
+            "type" : "string",
+            "description" : "By default, reference attributes using this data type will create this association when a value is assigned."
+          },
+          "defaultAssociationHref" : {
+            "type" : "string",
+            "description" : "Link to association indiciated by defaultAssociationId"
+          },
+          "classId" : {
+            "type" : "string",
+            "description" : "Class selected by this reference data type."
+          },
+          "classHref" : {
+            "type" : "string",
+            "description" : "URL of class selected by this reference data type."
+          },
+          "attributeId" : {
+            "type" : "string",
+            "description" : "Attribute to be projected from the source class."
+          },
+          "attributeHref" : {
+            "type" : "string",
+            "description" : "URL of attribute to be projected from the source class."
+          }
+        }
+      } ],
+      "description" : "A reference data type describes a property that is projected from a class. It is then used by reference attributes which give the destination of that property."
+    },
+    "RefDataTypesResponse" : {
+      "allOf" : [ {
+        "$ref" : "#/definitions/CollectionResponse"
+      }, {
+        "type" : "object",
+        "properties" : {
+          "items" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/definitions/RefDataTypeResponse"
+            }
+          }
+        }
+      } ]
+    },
+    "RefAttributePost" : {
+      "type" : "object",
+      "required" : [ "name" ],
+      "properties" : {
+        "refDataTypeId" : {
+          "type" : "string",
+          "description" : "Id of reference data type.",
+          "pattern" : "[^.]+[.].+"
+        },
+        "boost" : {
+          "type" : "string",
+          "enum" : [ "LOWEST", "LOWER", "LOW", "MEDIUM", "HIGH" ]
+        },
+        "name" : {
+          "type" : "string",
+          "maxLength" : 200,
+          "pattern" : "[a-zA-Z0-9 _-]+"
+        },
+        "description" : {
+          "type" : "string"
+        },
+        "multivalued" : {
+          "type" : "boolean"
+        },
+        "suggestable" : {
+          "type" : "boolean"
+        },
+        "sortable" : {
+          "type" : "boolean"
+        },
+        "searchable" : {
+          "type" : "boolean"
+        },
+        "facetable" : {
+          "type" : "boolean"
+        },
+        "analyzer" : {
+          "type" : "string",
+          "enum" : [ "INT", "LONG", "FLOAT", "DOUBLE", "BOOLEAN", "DATE", "STRING", "TEXT_GENERAL", "TEXT_TECHNICAL", "PATH_HEIRARCHY" ]
+        },
+        "classes" : {
+          "type" : "array",
+          "description" : "Classes that may have this attribute.",
+          "items" : {
+            "$ref" : "#/definitions/ModelRefRequest"
+          }
+        }
+      }
+    },
+    "RefAttributePut" : {
+      "type" : "object",
+      "required" : [ "name" ],
+      "properties" : {
+        "boost" : {
+          "type" : "string",
+          "enum" : [ "LOWEST", "LOWER", "LOW", "MEDIUM", "HIGH" ]
+        },
+        "name" : {
+          "type" : "string",
+          "maxLength" : 200,
+          "pattern" : "[a-zA-Z0-9 _-]+"
+        },
+        "facetable" : {
+          "type" : "boolean"
+        },
+        "analyzer" : {
+          "type" : "string",
+          "enum" : [ "INT", "LONG", "FLOAT", "DOUBLE", "BOOLEAN", "DATE", "STRING", "TEXT_GENERAL", "TEXT_TECHNICAL", "PATH_HEIRARCHY" ]
+        },
+        "description" : {
+          "type" : "string"
+        },
+        "classes" : {
+          "type" : "array",
+          "description" : "Classes that may have this attribute.",
+          "items" : {
+            "$ref" : "#/definitions/ModelRefRequest"
+          }
+        }
+      }
+    },
+    "RefAttributesPost" : {
+      "type" : "object",
+      "properties" : {
+        "items" : {
+          "type" : "array",
+          "items" : {
+            "$ref" : "#/definitions/RefAttributePost"
+          }
+        }
+      }
+    },
+    "RefAttributeResponse" : {
+      "allOf" : [ {
+        "$ref" : "#/definitions/RefAttributePost"
+      }, {
+        "$ref" : "#/definitions/ResourceResponse"
+      }, {
+        "type" : "object",
+        "properties" : {
+          "associationHref" : {
+            "type" : "string",
+            "description" : "Link to association indicated by associationId"
+          },
+          "associationId" : {
+            "type" : "string",
+            "description" : "Type of association to be created when assigning a value to this attribute."
+          },
+          "refDataTypeHref" : {
+            "type" : "string",
+            "description" : "Link to the reference data type."
+          },
+          "classes" : {
+            "type" : "array",
+            "description" : "Classes that may have this attribute.",
+            "items" : {
+              "$ref" : "#/definitions/ObjectRefResponse"
+            }
+          }
+        }
+      } ]
+    },
+    "RefAttributesResponse" : {
+      "allOf" : [ {
+        "$ref" : "#/definitions/CollectionResponse"
+      }, {
+        "type" : "object",
+        "properties" : {
+          "items" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/definitions/RefAttributeResponse"
+            }
+          }
+        }
+      } ]
+    },
+    "AttributePostRequest" : {
+      "type" : "object",
+      "required" : [ "dataTypeId" ],
+      "properties" : {
+        "boost" : {
+          "type" : "string",
+          "default" : "MEDIUM",
+          "enum" : [ "LOWEST", "LOWER", "LOW", "MEDIUM", "HIGH" ]
+        },
+        "name" : {
+          "type" : "string",
+          "maxLength" : 200,
+          "pattern" : "[a-zA-Z0-9 _-]+"
+        },
+        "description" : {
+          "type" : "string"
+        },
+        "dataTypeId" : {
+          "type" : "string",
+          "pattern" : "[^.]+[.].+"
+        },
+        "multivalued" : {
+          "type" : "boolean",
+          "default" : false
+        },
+        "suggestable" : {
+          "type" : "boolean",
+          "default" : false
+        },
+        "sortable" : {
+          "type" : "boolean",
+          "default" : false
+        },
+        "searchable" : {
+          "type" : "boolean",
+          "default" : true
+        },
+        "facetable" : {
+          "type" : "boolean",
+          "default" : false
+        },
+        "analyzer" : {
+          "type" : "string",
+          "enum" : [ "INT", "LONG", "FLOAT", "DOUBLE", "BOOLEAN", "DATE", "STRING", "TEXT_GENERAL", "TEXT_TECHNICAL", "PATH_HEIRARCHY" ]
+        },
+        "classes" : {
+          "type" : "array",
+          "description" : "Classes that may have this attribute.",
+          "items" : {
+            "$ref" : "#/definitions/ModelRefRequest"
+          }
+        }
+      }
+    },
+    "AttributePutRequest" : {
+      "type" : "object",
+      "required" : [ "name" ],
+      "properties" : {
+        "boost" : {
+          "type" : "string",
+          "default" : "MEDIUM",
+          "enum" : [ "LOWEST", "LOWER", "LOW", "MEDIUM", "HIGH" ]
+        },
+        "name" : {
+          "type" : "string",
+          "maxLength" : 200,
+          "pattern" : "[a-zA-Z0-9 _-]+"
+        },
+        "facetable" : {
+          "type" : "boolean",
+          "default" : false
+        },
+        "analyzer" : {
+          "type" : "string",
+          "enum" : [ "INT", "LONG", "FLOAT", "DOUBLE", "BOOLEAN", "DATE", "STRING", "TEXT_GENERAL", "TEXT_TECHNICAL", "PATH_HEIRARCHY" ]
+        },
+        "description" : {
+          "type" : "string"
+        },
+        "classes" : {
+          "type" : "array",
+          "description" : "Classes that may have this attribute.",
+          "items" : {
+            "$ref" : "#/definitions/ModelRefRequest"
+          }
+        }
+      }
+    },
+    "AttributeResponse" : {
+      "allOf" : [ {
+        "$ref" : "#/definitions/ResourceResponse"
+      }, {
+        "$ref" : "#/definitions/AttributePostRequest"
+      }, {
+        "type" : "object",
+        "properties" : {
+          "dataTypeHref" : {
+            "type" : "string"
+          },
+          "classes" : {
+            "type" : "array",
+            "description" : "Classes that may have this attribute.",
+            "items" : {
+              "$ref" : "#/definitions/ObjectRefResponse"
+            }
+          }
+        }
+      } ]
+    },
+    "Boost" : {
+      "type" : "object",
+      "properties" : {
+        "boost" : {
+          "type" : "string",
+          "default" : "MEDIUM",
+          "enum" : [ "LOWEST", "LOWER", "LOW", "MEDIUM", "HIGH" ]
+        }
+      }
+    },
+    "AttributesRequest" : {
+      "type" : "object",
+      "properties" : {
+        "items" : {
+          "type" : "array",
+          "items" : {
+            "$ref" : "#/definitions/AttributePostRequest"
+          }
+        }
+      }
+    },
+    "AttributesResponse" : {
+      "allOf" : [ {
+        "$ref" : "#/definitions/CollectionResponse"
+      }, {
+        "type" : "object",
+        "properties" : {
+          "items" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/definitions/AttributeResponse"
+            }
+          }
+        }
+      } ]
+    },
+    "AssociationResponse" : {
+      "allOf" : [ {
+        "$ref" : "#/definitions/ResourceResponse"
+      }, {
+        "$ref" : "#/definitions/Name"
+      }, {
+        "type" : "object",
+        "properties" : {
+          "fromClass" : {
+            "$ref" : "#/definitions/ObjectRefResponse"
+          },
+          "toClass" : {
+            "$ref" : "#/definitions/ObjectRefResponse"
+          },
+          "associationKinds" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/definitions/ObjectRefResponse"
+            }
+          },
+          "aggregate" : {
+            "type" : "boolean",
+            "description" : "Aggregate associations are implied by links between child objects. Aggregate associations can be duplicated, setting removeDuplicateAggregateLinks to true will suppress duplicates.",
+            "default" : false
+          },
+          "unidirectional" : {
+            "type" : "boolean",
+            "default" : false
+          }
+        }
+      } ]
+    },
+    "AssociationsResponse" : {
+      "allOf" : [ {
+        "$ref" : "#/definitions/CollectionResponse"
+      }, {
+        "type" : "object",
+        "properties" : {
+          "items" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/definitions/AssociationResponse"
+            }
+          }
+        }
+      } ]
+    },
+    "AssociationKindResponse" : {
+      "allOf" : [ {
+        "$ref" : "#/definitions/ResourceResponse"
+      }, {
+        "$ref" : "#/definitions/Name"
+      } ]
+    },
+    "AssociationKindsResponse" : {
+      "allOf" : [ {
+        "$ref" : "#/definitions/CollectionResponse"
+      }, {
+        "type" : "object",
+        "properties" : {
+          "items" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/definitions/AssociationKindResponse"
+            }
+          }
+        }
+      } ]
+    },
+    "ClassResponse" : {
+      "allOf" : [ {
+        "$ref" : "#/definitions/ResourceResponse"
+      }, {
+        "$ref" : "#/definitions/Name"
+      }, {
+        "$ref" : "#/definitions/Boost"
+      }, {
+        "type" : "object",
+        "properties" : {
+          "label" : {
+            "type" : "string"
+          },
+          "description" : {
+            "type" : "string"
+          },
+          "firstClass" : {
+            "type" : "boolean",
+            "default" : false
+          },
+          "superClasses" : {
+            "type" : "array",
+            "uniqueItems" : true,
+            "items" : {
+              "$ref" : "#/definitions/ObjectRefResponse"
+            }
+          },
+          "classTypeTags" : {
+            "type" : "array",
+            "uniqueItems" : true,
+            "items" : {
+              "type" : "string"
+            }
+          }
+        }
+      } ]
+    },
+    "ClassesResponse" : {
+      "allOf" : [ {
+        "$ref" : "#/definitions/CollectionResponse"
+      }, {
+        "type" : "object",
+        "properties" : {
+          "items" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/definitions/ClassResponse"
+            }
+          }
+        }
+      } ]
+    },
+    "ResourceTypeResponse" : {
+      "allOf" : [ {
+        "$ref" : "#/definitions/ResourceResponse"
+      }, {
+        "type" : "object",
+        "properties" : {
+          "label" : {
+            "type" : "string"
+          },
+          "version" : {
+            "type" : "string"
+          },
+          "scannerOptions" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/definitions/ResourceTypeResponse_scannerOptions"
+            }
+          }
+        }
+      } ]
+    },
+    "ResourceTypesResponse" : {
+      "allOf" : [ {
+        "$ref" : "#/definitions/CollectionResponse"
+      }, {
+        "type" : "object",
+        "properties" : {
+          "items" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/definitions/ResourceTypeResponse"
+            }
+          }
+        }
+      } ]
+    },
+    "ResourceInstanceRequest" : {
+      "type" : "object",
+      "required" : [ "id", "resourceTypeId" ],
+      "properties" : {
+        "id" : {
+          "type" : "string",
+          "description" : "Id of resource instance"
+        },
+        "description" : {
+          "type" : "string"
+        },
+        "resourceTypeId" : {
+          "type" : "string"
+        },
+        "resourceTypeVersion" : {
+          "type" : "string"
+        },
+        "schedules" : {
+          "type" : "array",
+          "items" : {
+            "$ref" : "#/definitions/ScheduleRequest"
+          }
+        },
+        "scannerConfigurations" : {
+          "type" : "array",
+          "items" : {
+            "$ref" : "#/definitions/ScannerConfigurationRequest"
+          }
+        }
+      }
+    },
+    "ResourceInstanceResponse" : {
+      "allOf" : [ {
+        "$ref" : "#/definitions/ResourceResponse"
+      }, {
+        "$ref" : "#/definitions/ResourceInstanceRequest"
+      }, {
+        "type" : "object",
+        "properties" : {
+          "resourceTypeLabel" : {
+            "type" : "string"
+          },
+          "createdBy" : {
+            "type" : "string"
+          },
+          "createdTime" : {
+            "type" : "number",
+            "format" : "long"
+          },
+          "modifiedBy" : {
+            "type" : "string"
+          },
+          "modifiedTime" : {
+            "type" : "number",
+            "format" : "long"
+          },
+          "schedules" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/definitions/ScheduleResponse"
+            }
+          },
+          "scannerConfigurations" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/definitions/ScannerConfigurationResponse"
+            }
+          }
+        }
+      } ]
+    },
+    "ScannerConfigurationRequest" : {
+      "type" : "object",
+      "required" : [ "scannerId" ],
+      "properties" : {
+        "scannerId" : {
+          "type" : "string"
+        },
+        "enabled" : {
+          "type" : "boolean",
+          "default" : false
+        },
+        "options" : {
+          "type" : "array",
+          "items" : {
+            "$ref" : "#/definitions/ScannerConfigurationRequest_options"
+          }
+        }
+      }
+    },
+    "ScannerConfigurationResponse" : {
+      "allOf" : [ {
+        "$ref" : "#/definitions/ScannerConfigurationRequest"
+      }, {
+        "type" : "object",
+        "properties" : {
+          "providerId" : {
+            "type" : "string"
+          },
+          "providerLabel" : {
+            "type" : "string"
+          },
+          "options" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/definitions/ScannerConfigurationRequest_options"
+            }
+          }
+        }
+      } ]
+    },
+    "ScheduleRequest" : {
+      "type" : "object",
+      "properties" : {
+        "id" : {
+          "type" : "string"
+        },
+        "description" : {
+          "type" : "string"
+        },
+        "startTime" : {
+          "type" : "number",
+          "format" : "long"
+        },
+        "scannerConfigurationOverrides" : {
+          "type" : "array",
+          "items" : {
+            "$ref" : "#/definitions/ScannerConfigurationRequest"
+          }
+        },
+        "recurrence" : {
+          "$ref" : "#/definitions/Recurrence"
+        }
+      }
+    },
+    "ScheduleResponse" : {
+      "allOf" : [ {
+        "$ref" : "#/definitions/ScheduleRequest"
+      }, {
+        "type" : "object",
+        "properties" : {
+          "scannerConfigurationOverrides" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/definitions/ScannerConfigurationResponse"
+            }
+          },
+          "createdBy" : {
+            "type" : "string"
+          },
+          "createdTime" : {
+            "type" : "number",
+            "format" : "long"
+          }
+        }
+      } ]
+    },
+    "Recurrence" : {
+      "type" : "object",
+      "required" : [ "type" ],
+      "discriminator" : "type",
+      "properties" : {
+        "type" : {
+          "type" : "string",
+          "enum" : [ "DailyRecurrence", "WeeklyRecurrence", "MonthDayMonthlyRecurrence", "WeekDayMonthlyRecurrence" ]
+        },
+        "frequency" : {
+          "type" : "number",
+          "format" : "integer"
+        },
+        "until" : {
+          "type" : "number",
+          "format" : "long"
+        }
+      }
+    },
+    "DailyRecurrence" : {
+      "allOf" : [ {
+        "$ref" : "#/definitions/Recurrence"
+      } ]
+    },
+    "WeeklyRecurrence" : {
+      "allOf" : [ {
+        "$ref" : "#/definitions/Recurrence"
+      }, {
+        "type" : "object",
+        "properties" : {
+          "daysOfWeek" : {
+            "type" : "array",
+            "uniqueItems" : true,
+            "items" : {
+              "$ref" : "#/definitions/DayOfWeek"
+            }
+          }
+        }
+      } ]
+    },
+    "MonthDayMonthlyRecurrence" : {
+      "allOf" : [ {
+        "$ref" : "#/definitions/Recurrence"
+      }, {
+        "type" : "object",
+        "properties" : {
+          "dayOfMonth" : {
+            "type" : "number",
+            "format" : "int",
+            "minimum" : 1,
+            "maximum" : 31
+          }
+        }
+      } ]
+    },
+    "WeekDayMonthlyRecurrence" : {
+      "allOf" : [ {
+        "$ref" : "#/definitions/Recurrence"
+      }, {
+        "type" : "object",
+        "properties" : {
+          "weeksOfMonth" : {
+            "type" : "array",
+            "uniqueItems" : true,
+            "items" : {
+              "type" : "string",
+              "enum" : [ "FIRST", "SECOND", "THIRD", "FOURTH", "LAST" ]
+            }
+          },
+          "dayOfWeek" : {
+            "$ref" : "#/definitions/DayOfWeek"
+          }
+        }
+      } ]
+    },
+    "DayOfWeek" : {
+      "type" : "string",
+      "enum" : [ "SUN", "MON", "TUE", "WED", "THU", "FRI", "SAT" ]
+    },
+    "ResourceInstancesResponse" : {
+      "allOf" : [ {
+        "$ref" : "#/definitions/CollectionResponse"
+      }, {
+        "type" : "object",
+        "properties" : {
+          "items" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/definitions/ResourceInstanceResponse"
+            }
+          }
+        }
+      } ]
+    },
+    "ConnectionRequest" : {
+      "type" : "object",
+      "required" : [ "assignmentType", "connectionId", "providerId", "resourceName" ],
+      "properties" : {
+        "resourceName" : {
+          "type" : "string"
+        },
+        "providerId" : {
+          "type" : "string"
+        },
+        "connectionId" : {
+          "type" : "string"
+        },
+        "assignmentType" : {
+          "type" : "string"
+        },
+        "assignment" : {
+          "$ref" : "#/definitions/ConnectionRequest_assignment"
+        }
+      }
+    },
+    "ConnectionResponse" : {
+      "allOf" : [ {
+        "$ref" : "#/definitions/ConnectionRequest"
+      }, {
+        "type" : "object",
+        "properties" : {
+          "ingested" : {
+            "type" : "string"
+          }
+        }
+      } ]
+    },
+    "ConnectionsRequest" : {
+      "type" : "object",
+      "properties" : {
+        "items" : {
+          "type" : "array",
+          "items" : {
+            "$ref" : "#/definitions/ConnectionRequest"
+          }
+        }
+      }
+    },
+    "ConnectionsResponse" : {
+      "allOf" : [ {
+        "$ref" : "#/definitions/CollectionResponse"
+      }, {
+        "type" : "object",
+        "properties" : {
+          "items" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/definitions/ConnectionResponse"
+            }
+          }
+        }
+      } ]
+    },
+    "ConnectionSuggestionResponse" : {
+      "type" : "object",
+      "properties" : {
+        "resourceName" : {
+          "type" : "string"
+        },
+        "providerId" : {
+          "type" : "string"
+        },
+        "connectionId" : {
+          "type" : "string"
+        },
+        "assignment" : {
+          "$ref" : "#/definitions/ConnectionRequest_assignment"
+        }
+      }
+    },
+    "ConnectionSuggestionsResponse" : {
+      "allOf" : [ {
+        "$ref" : "#/definitions/CollectionResponse"
+      }, {
+        "type" : "object",
+        "properties" : {
+          "items" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/definitions/ConnectionSuggestionResponse"
+            }
+          }
+        }
+      } ]
+    },
+    "JobPostRequestDiscriminator" : {
+      "type" : "object",
+      "required" : [ "jobType" ],
+      "discriminator" : "jobType",
+      "properties" : {
+        "jobType" : {
+          "type" : "string",
+          "enum" : [ "TestConnectionJobRequest", "ManualResourceLoadJobRequest", "ManualResourceJobRequest" ]
+        }
+      },
+      "description" : "Can be cast to JobPostRequest"
+    },
+    "JobPostRequest" : {
+      "allOf" : [ {
+        "$ref" : "#/definitions/JobPostRequestDiscriminator"
+      }, {
+        "type" : "object",
+        "required" : [ "resourceName" ],
+        "properties" : {
+          "resourceName" : {
+            "type" : "string"
+          }
+        }
+      } ]
+    },
+    "JobPutRequest" : {
+      "type" : "object",
+      "properties" : {
+        "status" : {
+          "type" : "object",
+          "description" : "Jobs may be canceled, paused, or resumed by changing the status",
+          "properties" : { }
+        }
+      }
+    },
+    "JobResponseDiscriminator" : {
+      "type" : "object",
+      "required" : [ "jobType" ],
+      "discriminator" : "jobType",
+      "properties" : {
+        "jobType" : {
+          "type" : "string",
+          "enum" : [ "TestConnectionJobResponse", "ScheduledResourceLoadJobResponse", "ManualResourceLoadJobResponse", "ManualResourceJobResponse" ]
+        }
+      },
+      "description" : "Can be safely cast to JobResponse"
+    },
+    "JobResponse" : {
+      "allOf" : [ {
+        "$ref" : "#/definitions/JobResponseDiscriminator"
+      }, {
+        "$ref" : "#/definitions/ResourceResponse"
+      }, {
+        "type" : "object",
+        "required" : [ "resourceName" ],
+        "properties" : {
+          "resourceName" : {
+            "type" : "string"
+          },
+          "jobTypeLabel" : {
+            "type" : "string"
+          },
+          "status" : {
+            "type" : "object",
+            "description" : "Jobs may be canceled, paused, or resumed by changing the status",
+            "properties" : { }
+          },
+          "statusLabel" : {
+            "type" : "string"
+          },
+          "resourceGroupName" : {
+            "type" : "string"
+          },
+          "startTime" : {
+            "type" : "number",
+            "format" : "long"
+          },
+          "endTime" : {
+            "type" : "number",
+            "format" : "long"
+          },
+          "triggerMode" : {
+            "type" : "string",
+            "enum" : [ "MANUAL", "SCHEDULED" ]
+          },
+          "triggerModelLabel" : {
+            "type" : "string"
+          },
+          "tasks" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/definitions/Task"
+            }
+          }
+        }
+      } ]
+    },
+    "Task" : {
+      "type" : "object",
+      "properties" : {
+        "id" : {
+          "type" : "string"
+        },
+        "status" : {
+          "$ref" : "#/definitions/Status"
+        },
+        "statusLabel" : {
+          "type" : "string"
+        },
+        "startTime" : {
+          "type" : "number",
+          "format" : "long"
+        },
+        "endTime" : {
+          "type" : "number",
+          "format" : "long"
+        },
+        "taskType" : {
+          "type" : "string"
+        },
+        "taskTypeLabel" : {
+          "type" : "string"
+        },
+        "taskGroup" : {
+          "type" : "string"
+        },
+        "logLocation" : {
+          "type" : "string"
+        },
+        "containerLogLocation" : {
+          "type" : "string"
+        }
+      }
+    },
+    "Status" : {
+      "type" : "string",
+      "enum" : [ "NOT_SUBMITTED", "QUEUED", "RUNNING", "CANCEL_REQUESTED", "PAUSE_REQUESTED", "SUCCEEDED", "FAILED", "CANCELED", "PAUSED" ]
+    },
+    "ScheduledResourceLoadJobResponse" : {
+      "allOf" : [ {
+        "$ref" : "#/definitions/JobResponse"
+      }, {
+        "type" : "object",
+        "properties" : {
+          "nextSchedule" : {
+            "type" : "number",
+            "format" : "long",
+            "readOnly" : true
+          },
+          "scheduleId" : {
+            "type" : "string",
+            "readOnly" : true
+          }
+        }
+      } ]
+    },
+    "ManualResourceLoadJobRequest" : {
+      "allOf" : [ {
+        "$ref" : "#/definitions/JobPostRequest"
+      }, {
+        "type" : "object",
+        "properties" : {
+          "scannerConfigurationOverrides" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/definitions/ScannerConfigurationResponse"
+            }
+          }
+        }
+      } ]
+    },
+    "ManualResourceLoadJobResponse" : {
+      "allOf" : [ {
+        "$ref" : "#/definitions/JobResponse"
+      }, {
+        "type" : "object",
+        "properties" : {
+          "scannerConfigurationOverrides" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/definitions/ScannerConfigurationResponse"
+            }
+          }
+        }
+      } ]
+    },
+    "ManualResourceJobRequest" : {
+      "allOf" : [ {
+        "$ref" : "#/definitions/JobPostRequest"
+      }, {
+        "type" : "object",
+        "required" : [ "resourceJobType" ],
+        "properties" : {
+          "resourceJobType" : {
+            "type" : "string",
+            "enum" : [ "PURGE", "DELETE", "ROLLBACK" ]
+          }
+        }
+      } ]
+    },
+    "ManualResourceJobResponse" : {
+      "allOf" : [ {
+        "$ref" : "#/definitions/JobResponse"
+      }, {
+        "type" : "object",
+        "required" : [ "resourceJobType" ],
+        "properties" : {
+          "resourceJobType" : {
+            "type" : "string",
+            "enum" : [ "PURGE", "DELETE", "ROLLBACK" ]
+          }
+        }
+      } ]
+    },
+    "TestConnectionJobRequest" : {
+      "allOf" : [ {
+        "$ref" : "#/definitions/JobPostRequest"
+      }, {
+        "type" : "object",
+        "properties" : {
+          "configuration" : {
+            "$ref" : "#/definitions/ScannerConfigurationRequest"
+          }
+        }
+      } ]
+    },
+    "TestConnectionJobResponse" : {
+      "allOf" : [ {
+        "$ref" : "#/definitions/JobResponse"
+      }, {
+        "type" : "object",
+        "properties" : {
+          "reason" : {
+            "type" : "string",
+            "description" : "Reason for test connection failure",
+            "readOnly" : true
+          },
+          "configuration" : {
+            "$ref" : "#/definitions/ScannerConfigurationResponse"
+          }
+        }
+      } ]
+    },
+    "JobsPostRequest" : {
+      "type" : "object",
+      "properties" : {
+        "items" : {
+          "type" : "array",
+          "items" : {
+            "$ref" : "#/definitions/JobPostRequestDiscriminator"
+          }
+        }
+      }
+    },
+    "JobsResponse" : {
+      "allOf" : [ {
+        "$ref" : "#/definitions/CollectionResponse"
+      }, {
+        "type" : "object",
+        "properties" : {
+          "items" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/definitions/JobResponseDiscriminator"
+            }
+          }
+        }
+      } ]
+    },
+    "ResourceTypeResponse_staticValues" : {
+      "required" : [ "label" ],
+      "properties" : {
+        "label" : {
+          "type" : "string"
+        },
+        "value" : {
+          "type" : "string"
+        }
+      }
+    },
+    "ResourceTypeResponse_dependentOptions" : {
+      "required" : [ "id" ],
+      "properties" : {
+        "id" : {
+          "type" : "string"
+        },
+        "value" : {
+          "type" : "string"
+        }
+      }
+    },
+    "ResourceTypeResponse_options" : {
+      "required" : [ "id" ],
+      "properties" : {
+        "id" : {
+          "type" : "string"
+        },
+        "label" : {
+          "type" : "string"
+        },
+        "description" : {
+          "type" : "string"
+        },
+        "mandatory" : {
+          "type" : "boolean",
+          "default" : false
+        },
+        "sensitive" : {
+          "type" : "boolean",
+          "default" : false
+        },
+        "multivalued" : {
+          "type" : "boolean",
+          "default" : false
+        },
+        "editable" : {
+          "type" : "boolean",
+          "default" : true
+        },
+        "dynamicValues" : {
+          "type" : "boolean",
+          "default" : false
+        },
+        "defaultValue" : {
+          "type" : "string"
+        },
+        "dataType" : {
+          "type" : "string"
+        },
+        "semanticType" : {
+          "type" : "string"
+        },
+        "optionGroupId" : {
+          "type" : "string"
+        },
+        "optionGroupLabel" : {
+          "type" : "string",
+          "readOnly" : true
+        },
+        "optionGroupDesc" : {
+          "type" : "string",
+          "readOnly" : true
+        },
+        "similarOptionId" : {
+          "type" : "string"
+        },
+        "staticValues" : {
+          "type" : "array",
+          "items" : {
+            "$ref" : "#/definitions/ResourceTypeResponse_staticValues"
+          }
+        },
+        "dependentOptions" : {
+          "type" : "array",
+          "items" : {
+            "$ref" : "#/definitions/ResourceTypeResponse_dependentOptions"
+          }
+        },
+        "dependsOn" : {
+          "type" : "array",
+          "items" : {
+            "$ref" : "#/definitions/ResourceTypeResponse_dependentOptions"
+          }
+        }
+      }
+    },
+    "ResourceTypeResponse_scannerOptions" : {
+      "properties" : {
+        "scannerId" : {
+          "type" : "string"
+        },
+        "providerId" : {
+          "type" : "string",
+          "readOnly" : true
+        },
+        "providerLabel" : {
+          "type" : "string",
+          "readOnly" : true
+        },
+        "augmentation" : {
+          "type" : "boolean",
+          "readOnly" : true
+        },
+        "options" : {
+          "type" : "array",
+          "items" : {
+            "$ref" : "#/definitions/ResourceTypeResponse_options"
+          }
+        }
+      }
+    },
+    "ScannerConfigurationRequest_options" : {
+      "required" : [ "optionId" ],
+      "properties" : {
+        "optionId" : {
+          "type" : "string"
+        },
+        "optionValues" : {
+          "type" : "array",
+          "items" : {
+            "type" : "string"
+          }
+        }
+      }
+    },
+    "ConnectionRequest_assignment" : {
+      "properties" : {
+        "resourceName" : {
+          "type" : "string"
+        },
+        "schemaName" : {
+          "type" : "string"
+        },
+        "objectId" : {
+          "type" : "string"
+        }
+      }
+    }
+  },
+  "parameters" : {
+    "offset" : {
+      "name" : "offset",
+      "in" : "query",
+      "description" : "Starting from result",
+      "required" : false,
+      "type" : "number",
+      "default" : 0.0,
+      "minimum" : 0,
+      "format" : "int32"
+    },
+    "removeDuplicateAggregateLinks" : {
+      "name" : "removeDuplicateAggregateLinks",
+      "in" : "query",
+      "description" : "Duplicate aggregate links are somtimes created by scanners, when set to true they will not be displayed in responses.",
+      "required" : false,
+      "type" : "boolean",
+      "default" : true
+    },
+    "modelPathId" : {
+      "name" : "id",
+      "in" : "path",
+      "required" : true,
+      "type" : "string",
+      "pattern" : "[^.]+[.].*[^.]"
+    },
+    "pageSize" : {
+      "name" : "pageSize",
+      "in" : "query",
+      "description" : "Results per page",
+      "required" : false,
+      "type" : "number",
+      "default" : 20.0,
+      "minimum" : 1,
+      "format" : "int32"
+    },
+    "modelQueryId" : {
+      "name" : "id",
+      "in" : "query",
+      "required" : false,
+      "type" : "array",
+      "items" : {
+        "type" : "string",
+        "pattern" : "[^.]+[.].*[^.]"
+      },
+      "collectionFormat" : "multi"
+    },
+    "pathId" : {
+      "name" : "id",
+      "in" : "path",
+      "required" : true,
+      "type" : "string"
+    },
+    "queryId" : {
+      "name" : "id",
+      "in" : "query",
+      "required" : false,
+      "type" : "array",
+      "items" : {
+        "type" : "string"
+      },
+      "collectionFormat" : "multi"
+    },
+    "direction" : {
+      "name" : "direction",
+      "in" : "query",
+      "description" : "Direction to traverse. Valid values BOTH, IN, OUT",
+      "required" : false,
+      "type" : "string",
+      "default" : "BOTH",
+      "enum" : [ "IN", "OUT", "BOTH" ]
+    },
+    "ifMatch" : {
+      "name" : "If-Match",
+      "in" : "header",
+      "description" : "Do not update if etag for resource has changed",
+      "required" : false,
+      "type" : "string"
+    }
+  },
+  "responses" : {
+    "BadRequest" : {
+      "description" : "Missing or invalid parameter",
+      "schema" : {
+        "$ref" : "#/definitions/Error"
+      }
+    },
+    "Forbidden" : {
+      "description" : "User does not have access permission",
+      "schema" : {
+        "$ref" : "#/definitions/Error"
+      }
+    },
+    "NotFound" : {
+      "description" : "Requested object not found",
+      "schema" : {
+        "$ref" : "#/definitions/Error"
+      }
+    },
+    "PreconditionFailed" : {
+      "description" : "Conflicting edit detected",
+      "schema" : {
+        "$ref" : "#/definitions/Error"
+      }
+    },
+    "TooManyRequests" : {
+      "description" : "Rate limit for requests",
+      "schema" : {
+        "$ref" : "#/definitions/Error"
+      },
+      "headers" : {
+        "Retry-After" : {
+          "type" : "number",
+          "format" : "integer",
+          "description" : "Retry after X seconds"
+        }
+      }
+    },
+    "Unauthorized" : {
+      "description" : "Missing credentials",
+      "schema" : {
+        "$ref" : "#/definitions/Error"
+      }
+    }
+  }
+}
