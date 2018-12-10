@@ -30,7 +30,7 @@ import com.opencsv.CSVWriter;
  */
 public class AthenaScanner {
 
-    public static final String version="0.2test";
+    public static final String version="0.2test2";
     
     private String jdbcDriver="";
     private String jdbcUrl="";
@@ -244,17 +244,27 @@ public class AthenaScanner {
 					        	if (views.contains(tableName)) {
 					        		isTable=false;  // its a view
 					        		System.out.println("\t\t\t" + tableName  + " is a view");
+					        		System.out.println("\t\t\textracting create view statement:  "  + "SHOW CREATE VIEW " + schemaName + "." + tableName);
+					        		try {
 						        	tabSQL = con.createStatement().executeQuery("SHOW CREATE VIEW " + schemaName + "." + tableName);
-						        	while (tabSQL.next()) {
-						        		viewBuf.append(tabSQL.getString("create view") + "\n");
-						        	}
+							        	while (tabSQL.next()) {
+							        		viewBuf.append(tabSQL.getString("create view") + "\n");
+							        	}
+					        		} catch (Exception ex) {
+					        			ex.printStackTrace();
+					        		}
 					        	} else {
+					        		System.out.println("\t\t\textracting create table statement:  "  + "SHOW CREATE TABLE " + schemaName + "." + tableName);
+					        		try {
 						        	tabSQL = con.createStatement().executeQuery("SHOW CREATE TABLE " + schemaName + "." + tableName);
-						        	while (tabSQL.next()) {
-						        		viewBuf.append(tabSQL.getString("createtab_stmt") + "\n");
-						        	}
-						        	s3Location = extractLocation(viewBuf.toString());
-						        	System.out.println("\t\t\tLocation=" + s3Location);
+							        	while (tabSQL.next()) {
+							        		viewBuf.append(tabSQL.getString("createtab_stmt") + "\n");
+							        	}
+							        	s3Location = extractLocation(viewBuf.toString());
+							        	System.out.println("\t\t\tLocation=" + s3Location);
+					        		} catch (Exception ex) {
+					        			ex.printStackTrace();
+					        		}
 					        	}
 					   
 //					        	System.out.println("view/tab sql===");
@@ -274,35 +284,40 @@ public class AthenaScanner {
 						        // SOURCE_DATA_TYPE, IS_AUTOINCREMENT, IS_GENERATEDCOLUMN]
 						    	
 					        	int colCount=0;
-							    ResultSet columns = dbMetaData.getColumns(catalog, schemaName, tableName, null);
-							    while(columns.next()) {
-							    	colCount++;
-					                String columnName = columns.getString("COLUMN_NAME");
-//					                String datatype = columns.getString("DATA_TYPE");
-					                String typeName = columns.getString("TYPE_NAME");
-					                String columnsize = columns.getString("COLUMN_SIZE");
-					                String decimaldigits = columns.getString("DECIMAL_DIGITS");
-					                String isNullable = columns.getString("IS_NULLABLE");
-					                String remarks = columns.getString("REMARKS");
-					                String def = columns.getString("COLUMN_DEF");
-					                String sqlType = columns.getString("SQL_DATA_TYPE");
-					                String pos = columns.getString("ORDINAL_POSITION");
-					                String scTable = columns.getString("SCOPE_TABLE");
-					                String scCatlg = columns.getString("SCOPE_CATALOG");
-		
-						        	if (isTable) {
-						        		createColumn(catalog, schemaName, tableName, "TABLE", columnName, typeName, columnsize, pos);
-						        	} else {
-						        		createColumn(catalog, schemaName, tableName, "VIEW", columnName, typeName, columnsize, pos);						        		
-						        	}
-					                		
-					                //Printing results
-//					                System.out.println("\t\t\t" + columnName + " type=" //+ dataTypes.get(datatype) + "|" + 
-//					                		+ typeName + " size=" + columnsize + " digits=" + decimaldigits + " nulls=" + isNullable
-//					                		+ " remarks=" + remarks + " def=" + def + " sqlType=" + sqlType
-//					                		+ " pos=" + pos + " scTable=" + scTable + " scCatlg=" + scCatlg
-//					                		);
-							    }  // end for each column
+					        	try {
+								    ResultSet columns = dbMetaData.getColumns(catalog, schemaName, tableName, null);
+								    while(columns.next()) {
+								    	colCount++;
+						                String columnName = columns.getString("COLUMN_NAME");
+	//					                String datatype = columns.getString("DATA_TYPE");
+						                String typeName = columns.getString("TYPE_NAME");
+						                String columnsize = columns.getString("COLUMN_SIZE");
+						                String decimaldigits = columns.getString("DECIMAL_DIGITS");
+						                String isNullable = columns.getString("IS_NULLABLE");
+						                String remarks = columns.getString("REMARKS");
+						                String def = columns.getString("COLUMN_DEF");
+						                String sqlType = columns.getString("SQL_DATA_TYPE");
+						                String pos = columns.getString("ORDINAL_POSITION");
+						                String scTable = columns.getString("SCOPE_TABLE");
+						                String scCatlg = columns.getString("SCOPE_CATALOG");
+			
+							        	if (isTable) {
+							        		createColumn(catalog, schemaName, tableName, "TABLE", columnName, typeName, columnsize, pos);
+							        	} else {
+							        		createColumn(catalog, schemaName, tableName, "VIEW", columnName, typeName, columnsize, pos);						        		
+							        	}
+						                		
+						                //Printing results
+	//					                System.out.println("\t\t\t" + columnName + " type=" //+ dataTypes.get(datatype) + "|" + 
+	//					                		+ typeName + " size=" + columnsize + " digits=" + decimaldigits + " nulls=" + isNullable
+	//					                		+ " remarks=" + remarks + " def=" + def + " sqlType=" + sqlType
+	//					                		+ " pos=" + pos + " scTable=" + scTable + " scCatlg=" + scCatlg
+	//					                		);
+								    }  // end for each column
+					        	} catch (Exception ex) {
+					        		System.out.println("error extracting column metadata...");
+					        		ex.printStackTrace();
+					        	}
 							    System.out.println("\t\t\tcolumns extracted: " + colCount);
 					        } // if the table should be processed
 					    }  // end for each table
