@@ -40,24 +40,30 @@ Create a custom resource type
 * select `com.infa.ldm.relational.Database` and `com.infa.ldm.relational.Schema` as Connection Types
 
 
-Generate CSV files from Athena
-------------------------------------
+Install and Run the Athena Scanner
+----------------------------------
 
-execute the following command: 
+* download `edcAthena_Scanner_v<n_n>.zip` and unzip contents
+* edit athena.properties - configuring 
+    * jdbc.class
+    * jdbc.url
+    * user (aws access key)
+    * pwd (aws secret_key) - leave empty to be prompted
 
-java -jar <PATH_TO_JAR>\athenaScan.jar <athena.properties>
+To run the scanner
 
-athena.propeties contains the following:-
-* jdbc.class
-* jdbc.url
-* aws.key
-* aws.secret_key - leave empty to be prompted
+on linux
+* `./athena.sh`  optionally pass the name of the .properties file to control the scanner default athena.properties
+  - athena.sh will zip the 4 csv files into `athena_edc_custom.zip`
 
-this will generate athena.zip, containg:
+on windows
+* `java -cp "athenaScan.jar:lib/*" com.informatica.edc.custom.AthenaScanner <athena.properties>`
+
+CSV output files, for import into EDC:
 * athenaTablesViews.csv - table & view metadata - including view sql for both (for tables it will show the s3 "location"
-* columns.csv          - 1 row per column, with datatype/length/position
-* otherobjects.csv     - 1 row per db/schema (they share attributes so can be in a single file)
-* links.csv            - parent-child relationships between objects
+* columns.csv           - 1 row per column, with datatype/length/position
+* otherobjects.csv      - 1 row per db/schema (they share attributes so can be in a single file)
+* links.csv             - parent-child relationships between objects
 
 
 Create a resource to load the metadata
@@ -68,6 +74,71 @@ Create a resource to load the metadata
 * Upload the zip file where prompted
 * Click on next, then Save and Run.
 
+### Sample output
+-----------------
 
+```
+AthenaScanner: athena.properties currentTimeMillis=1544461478757
+AthenaScanner 0.1 initializing properties from: athena.properties
+password set to <prompt> for user AKIAINKSMW4ORPKKUTHA - waiting for user input...
+User password:
+   jdbc driver=com.simba.athena.jdbc.Driver
+      jdbc url=jdbc:awsathena://AwsRegion=us-west-2;S3OutputLocation=s3://aws-athena-query-results-595425154981-us-west-2
+          user=####################
+           pwd=****************************************
+Include/Exclude settings
+        schemas include filters=none - all (not excluded) will be extracted
+        schemas exclude filters=none - all will be excluded
+        tables include  filters=none - all tables be extracted (in not excluded)
+        tables exclude  filters=none - no tables will be excluded (except for table.include.filter settings)
+Initializing output files
+Initializing jdbc driver class: com.simba.athena.jdbc.Driver
+establishing connection to: jdbc:awsathena://AwsRegion=us-west-2;S3OutputLocation=s3://aws-athena-query-results-595425154981-us-west-2
+log4j:WARN No appenders could be found for logger (com.simba.athena.amazonaws.AmazonWebServiceClient).
+log4j:WARN Please initialize the log4j system properly.
+log4j:WARN See http://logging.apache.org/log4j/1.2/faq.html#noconfig for more info.
+Connected!
+getting database metadata object (con.getMetaData())
+getting catalogs:  DatabaseMetaData.getCatalogs()
+catalog: AwsDataCatalog
+        creating database: AwsDataCatalog
+        getting schemas - using 'show databases' command
+        schema=athena_db
+                object: athena_db included:true
+                getting view list using: 'show views in athena_db' command
+                views found: [order_view]
+                getting table list using: 'show tables in athena_db' command
+                customer_export
+                object: customer_export included:true
+                        columns extracted: 10
+                order_view
+                object: order_view included:true
+                        order_view is a view
+                        columns extracted: 2
+                pos_orders
+                object: pos_orders included:true
+                        columns extracted: 25
+finished tables
+        schema=default
+                object: default included:true
+                getting view list using: 'show views in default' command
+                views found: []
+                getting table list using: 'show tables in default' command
+finished tables
+        schema=sampledb
+                object: sampledb included:true
+                getting view list using: 'show views in sampledb' command
+                views found: []
+                getting table list using: 'show tables in sampledb' command
+                elb_logs
+                object: elb_logs included:true
+                        columns extracted: 19
+finished tables
+finished schemas
+closing...
+closing output files
+Finished
+
+```
 
 

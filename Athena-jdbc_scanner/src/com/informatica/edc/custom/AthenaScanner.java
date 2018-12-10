@@ -44,7 +44,7 @@ public class AthenaScanner {
     private ArrayList<String> tableIncludeFilters = new ArrayList<String>();
     private ArrayList<String> tableExcludeFilters = new ArrayList<String>();
     
-    private String otherObjectCsvName="AthenaObjects.csv";
+    private String otherObjectCsvName="athenaObjects.csv";
     private String tabCsvName="athenaTablesViews.csv";
     private String columnCsvName="athenaColumns.csv";
     private String linksCsvName="links.csv";
@@ -80,16 +80,16 @@ public class AthenaScanner {
 			jdbcUrl =  prop.getProperty("jdbc.url");
 			userId =  prop.getProperty("user");
 			passwd = prop.getProperty("pwd");			
-			if (passwd.equals("<prompt>") || passwd.equals("")) {
+			if (passwd==null || passwd.equals("<prompt>") || passwd.equals("")) {
 				System.out.println("password set to <prompt> for user " + userId  + " - waiting for user input...");
 				passwd = getPassword();
-				System.out.println("pwd chars entered (debug):  " + passwd.length());
+//				System.out.println("pwd chars entered (debug):  " + passwd.length());
 			}
 			
 			System.out.println("   jdbc driver=" + jdbcDriver);
 			System.out.println("      jdbc url=" + jdbcUrl);
 			System.out.println("          user=" + userId);
-			System.out.println("           pwd=" + passwd);
+			System.out.println("           pwd=" + passwd.replaceAll(".", "*"));
 			
 			
 			System.out.println("Include/Exclude settings");
@@ -100,7 +100,7 @@ public class AthenaScanner {
 			}
 		
 			if (schemaIncludeFilters.size()==0) {
-				System.out.println("\tschemas include filters=none - all will be extracted");			
+				System.out.println("\tschemas include filters=none - all (not excluded) will be extracted");			
 			} else {
 				System.out.println("\tschemas to include=" + schemaIncludeFilters.toString());
 			}
@@ -120,7 +120,7 @@ public class AthenaScanner {
 				tableIncludeFilters = new ArrayList<String>(Arrays.asList(filterText.split(";"))); 
 			}
 			if (tableIncludeFilters.size()==0) {
-				System.out.println("\ttables include filters=none - all tables be extracted (in not excluded)");			
+				System.out.println("\ttables include  filters=none - all tables be extracted (in not excluded)");			
 			} else {
 				System.out.println("\ttables to include=" + tableIncludeFilters.toString());
 			}
@@ -131,7 +131,7 @@ public class AthenaScanner {
 				tableExcludeFilters = new ArrayList<String>(Arrays.asList(filterText.split(";"))); 
 			}
 			if (tableExcludeFilters.size()==0) {
-				System.out.println("\ttables exclude filters=none - no tables will be excluded (except for table.include.filter settings)");			
+				System.out.println("\ttables exclude  filters=none - no tables will be excluded (except for table.include.filter settings)");			
 			} else {
 				System.out.println("\ttables to exclude=" + tableExcludeFilters.toString());
 			}
@@ -186,9 +186,9 @@ public class AthenaScanner {
 			    	schemaName = schemas.getString("database_name");
 			    	System.out.println("\tschema=" + schemaName);
 			    	
-			    	if (! isObjectIncluded(schemaName, schemaIncludeFilters, schemaExcludeFilters)) {
-			    		System.out.println("\tschema: " + schemaName + " skipped - does not match any filter expressions");
-			    	} else { 
+			    	if (isObjectIncluded(schemaName, schemaIncludeFilters, schemaExcludeFilters)) {
+//			    		System.out.println("\tschema: " + schemaName + " skipped - does not match any filter expressions");
+//			    	} else { 
 			    		// good to go for this schema
 				    	createSchema(catalog, schemaName);
 				    	
@@ -231,12 +231,9 @@ public class AthenaScanner {
 						        		viewBuf.append(tabSQL.getString("createtab_stmt") + "\n");
 						        	}
 					        	}
-					        	
-					        	
-					        	
-					        	System.out.println("view/tab sql===");
-					        	System.out.print(viewBuf.toString());
-					        	// get the table create statement (in case uses are interested in what s3 folder the table is created from 					        	
+					   
+//					        	System.out.println("view/tab sql===");
+//					        	System.out.print(viewBuf.toString());
 					        	
 					        	if (isTable) {
 					        		createTable(catalog, schemaName, tableName, "TABLE", viewBuf.toString());
@@ -251,8 +248,10 @@ public class AthenaScanner {
 						        // ORDINAL_POSITION, IS_NULLABLE, SCOPE_CATALOG, SCOPE_SCHEMA, SCOPE_TABLE, 
 						        // SOURCE_DATA_TYPE, IS_AUTOINCREMENT, IS_GENERATEDCOLUMN]
 						    	
+					        	int colCount=0;
 							    ResultSet columns = dbMetaData.getColumns(catalog, schemaName, tableName, null);
 							    while(columns.next()) {
+							    	colCount++;
 					                String columnName = columns.getString("COLUMN_NAME");
 					                String datatype = columns.getString("DATA_TYPE");
 					                String typeName = columns.getString("TYPE_NAME");
@@ -274,13 +273,13 @@ public class AthenaScanner {
 					                		
 			//		                String is_autoIncrment = columns.getString("IS_AUTOINCREMENT");
 					                //Printing results
-					                System.out.println("\t\t\t" + columnName + " type=" //+ dataTypes.get(datatype) + "|" + 
-					                		+ typeName + " size=" + columnsize + " digits=" + decimaldigits + " nulls=" + isNullable
-					                		+ " remarks=" + remarks + " def=" + def + " sqlType=" + sqlType
-					                		+ " pos=" + pos + " scTable=" + scTable + " scCatlg=" + scCatlg
-					                		);
+//					                System.out.println("\t\t\t" + columnName + " type=" //+ dataTypes.get(datatype) + "|" + 
+//					                		+ typeName + " size=" + columnsize + " digits=" + decimaldigits + " nulls=" + isNullable
+//					                		+ " remarks=" + remarks + " def=" + def + " sqlType=" + sqlType
+//					                		+ " pos=" + pos + " scTable=" + scTable + " scCatlg=" + scCatlg
+//					                		);
 							    }
-							    System.out.println("finished columns");
+							    System.out.println("\t\t\tcolumns extracted: " + colCount);
 					        } // if the table should be processed
 					    }
 					    System.out.println("finished tables");
@@ -312,14 +311,14 @@ public class AthenaScanner {
     }
 
 	private boolean isObjectIncluded(String objectName, List<String> includedRegexes, List<String> excludedRegexes) {
-		System.out.println("checking to exclude" + objectName);
+//		System.out.println("checking to exclude" + objectName);
 		boolean processSchema = true;  // assume true - until we find out otherwise
 		
 		// first check if the schema should be excluded (this over-rides the include list)
 		if (excludedRegexes.size() > 0) {
 			for (String filter: excludedRegexes) {
 				if (objectName.matches(filter)) {
-					System.out.println("\tobject: " + objectName + " is to be excluded");
+					System.out.println("\t\tobject: " + objectName + " is excluded");
 					processSchema = false;
 					return false;
 				}							
@@ -337,7 +336,7 @@ public class AthenaScanner {
 				}							
 			}
 		}
-		System.out.println("\tobject: " + objectName + " included???? " + processSchema);
+		System.out.println("\t\tobject: " + objectName + " included:" + processSchema);
 		return processSchema;
 	}
     
@@ -497,7 +496,7 @@ public class AthenaScanner {
 		Console c=System.console();
 		if (c==null) { //IN ECLIPSE IDE (prompt for password using swing ui    	
 			final JPasswordField pf = new JPasswordField(); 
-			String message = "User password:";
+			String message = "AWS Secret Access Key:";
 			password = JOptionPane.showConfirmDialog( null, pf, message, JOptionPane.OK_CANCEL_OPTION, 
 						JOptionPane.QUESTION_MESSAGE ) == JOptionPane.OK_OPTION ? new String( pf.getPassword() ) : "enter your pwd here...."; 
 		} else { //Outside Eclipse IDE  (e.g. windows/linux console)
