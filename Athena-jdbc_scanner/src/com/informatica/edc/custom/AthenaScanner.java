@@ -8,9 +8,6 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileWriter;
 import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.LinkOption;
-import java.nio.file.Paths;
 import java.sql.Connection;
 import java.sql.DatabaseMetaData;
 import java.sql.DriverManager;
@@ -33,7 +30,7 @@ import com.opencsv.CSVWriter;
  */
 public class AthenaScanner {
 
-    public static final String version="0.1";
+    public static final String version="0.2test";
     
     private String jdbcDriver="";
     private String jdbcUrl="";
@@ -179,11 +176,38 @@ public class AthenaScanner {
 		        System.out.println("catalog: "+catalog);
 		        createDatabase(catalog);
 
-		        System.out.println("\tgetting schemas - using 'show databases' command");
-			    ResultSet schemas = stmntSchems.executeQuery("show databases");
+		        ResultSet schemas=null;
+		        boolean option1=true;
+		        try {
+			        System.out.println("\tgetting schemas - using 'show databases' command");
+				    schemas = stmntSchems.executeQuery("show databases");
+		        } catch (Exception ex) {
+				    option1=false;
+		        	System.out.println("Error getting list of databases using: show databases; " + ex.getMessage());
+		        }
+		        
+		        if (schemas==null) {
+			        try {
+				        System.out.println("\tgetting schemas - jdbc DatabaseMetaData.getSchemas()");
+					    schemas = dbMetaData.getSchemas();
+			        } catch (Exception ex) {
+			        	System.out.println("Error getting list of databases using: getSchemas. " + ex.getMessage());
+			        }
+		        	
+		        }
 		    
+		        // if there are still no schemas - exit... there are some serious problems
+		        if (schemas==null) {
+		        	return;
+		        }
+		        
+		        // schemas will have 0 or more records - but not be null
 			    while(schemas.next()) {
-			    	schemaName = schemas.getString("database_name");
+			    	if (option1) {
+			    		schemaName = schemas.getString("database_name");
+			    	} else {
+			    		schemaName = schemas.getString("TABLE_SCHEM");			    		
+			    	}
 			    	System.out.println("\tschema=" + schemaName);
 			    	
 			    	if (isObjectIncluded(schemaName, schemaIncludeFilters, schemaExcludeFilters)) {
@@ -216,29 +240,30 @@ public class AthenaScanner {
 						        boolean isTable=true;
 					        	ResultSet tabSQL;
 					        	StringBuffer viewBuf = new StringBuffer();
+					        	String s3Location = "";
 					        	if (views.contains(tableName)) {
 					        		isTable=false;  // its a view
 					        		System.out.println("\t\t\t" + tableName  + " is a view");
 						        	tabSQL = con.createStatement().executeQuery("SHOW CREATE VIEW " + schemaName + "." + tableName);
 						        	while (tabSQL.next()) {
-//						        		System.out.println("view sql=" + tabSQL.getString("create view"));
 						        		viewBuf.append(tabSQL.getString("create view") + "\n");
 						        	}
 					        	} else {
 						        	tabSQL = con.createStatement().executeQuery("SHOW CREATE TABLE " + schemaName + "." + tableName);
 						        	while (tabSQL.next()) {
-//						        		System.out.println("table sql=" + tabSQL.getString("createtab_stmt"));
 						        		viewBuf.append(tabSQL.getString("createtab_stmt") + "\n");
 						        	}
+						        	s3Location = extractLocation(viewBuf.toString());
+						        	System.out.println("\t\t\tLocation=" + s3Location);
 					        	}
 					   
 //					        	System.out.println("view/tab sql===");
 //					        	System.out.print(viewBuf.toString());
 					        	
 					        	if (isTable) {
-					        		createTable(catalog, schemaName, tableName, "TABLE", viewBuf.toString());
+					        		createTable(catalog, schemaName, tableName, "TABLE", viewBuf.toString(), s3Location);
 					        	} else {
-					        		createTable(catalog, schemaName, tableName, "VIEW", viewBuf.toString());					        		
+					        		createTable(catalog, schemaName, tableName, "VIEW", viewBuf.toString(), "");					        		
 					        	}
 						        
 						        //[TABLE_CAT, TABLE_SCHEM, TABLE_NAME, COLUMN_NAME, 
@@ -253,7 +278,7 @@ public class AthenaScanner {
 							    while(columns.next()) {
 							    	colCount++;
 					                String columnName = columns.getString("COLUMN_NAME");
-					                String datatype = columns.getString("DATA_TYPE");
+//					                String datatype = columns.getString("DATA_TYPE");
 					                String typeName = columns.getString("TYPE_NAME");
 					                String columnsize = columns.getString("COLUMN_SIZE");
 					                String decimaldigits = columns.getString("DECIMAL_DIGITS");
@@ -271,42 +296,33 @@ public class AthenaScanner {
 						        		createColumn(catalog, schemaName, tableName, "VIEW", columnName, typeName, columnsize, pos);						        		
 						        	}
 					                		
-			//		                String is_autoIncrment = columns.getString("IS_AUTOINCREMENT");
 					                //Printing results
 //					                System.out.println("\t\t\t" + columnName + " type=" //+ dataTypes.get(datatype) + "|" + 
 //					                		+ typeName + " size=" + columnsize + " digits=" + decimaldigits + " nulls=" + isNullable
 //					                		+ " remarks=" + remarks + " def=" + def + " sqlType=" + sqlType
 //					                		+ " pos=" + pos + " scTable=" + scTable + " scCatlg=" + scCatlg
 //					                		);
-							    }
+							    }  // end for each column
 							    System.out.println("\t\t\tcolumns extracted: " + colCount);
 					        } // if the table should be processed
-					    }
+					    }  // end for each table
 					    System.out.println("finished tables");
 					    
-//				    	System.out.println("\t\tgetting views list using: 'show views in " + schemaName + "' command");
-//					    ResultSet views = con.createStatement().executeQuery("show views in " + schemaName);
-//					    while(views.next()) {
-//					    	System.out.println("\t\tVIWE...");
-//					    }
 			    	} // end of schema filter
 	
-			    }
+			    }  // end loop for each schema
 			    System.out.println("finished schemas");
 
-		    }		    
+		    }  // end loop for each catalog (usually only 1)		    
 
-		    System.out.println("closing...");
-			con.close();  
-			} catch(ClassNotFoundException cne) {
+		    System.out.println("closing athena jdbc connection...");
+		    con.close();  
+		} catch(ClassNotFoundException cne) {
 				System.out.println("\tcannot initialize class=" + jdbcDriver + " " + cne.getClass().getName() + " jdbc driver needs to be in current folder or CLASSPATH");
-			} catch(Exception e) { 
+		} catch(Exception e) { 
 			 	System.out.println(e);
 				e.printStackTrace();
-			}  
-
-		System.out.println("closing output files");
-		this.closeFiles();
+		}  
     	
     }
 
@@ -352,7 +368,7 @@ public class AthenaScanner {
 			this.linksWriter = new CSVWriter(new FileWriter(this.linksCsvName), ',', CSVWriter.NO_QUOTE_CHARACTER); 
 			
 			otherObjWriter.writeNext(new String[]{"class","identity","core.name"});
-			tableWriter.writeNext(new String[]{"class","identity","core.name", "com.infa.ldm.relational.ViewStatement"});
+			tableWriter.writeNext(new String[]{"class","identity","core.name", "com.infa.ldm.relational.ViewStatement", "com.infa.ldm.relational.Location"});
 			columnWriter.writeNext(new String[]{"class","identity","core.name","com.infa.ldm.relational.Datatype"
 												,"com.infa.ldm.relational.DatatypeLength", "com.infa.ldm.relational.Position"
 												, "core.dataSetUuid" 
@@ -371,7 +387,8 @@ public class AthenaScanner {
     
     
     private boolean closeFiles() {
- 
+		System.out.println("closing output files");
+
 		try { 
 			otherObjWriter.close(); 
 			tableWriter.close();
@@ -415,17 +432,18 @@ public class AthenaScanner {
     	return;
     }
 
-    private void createTable(String dbName, String schema, String table, String type, String ddl) {
+    private void createTable(String dbName, String schema, String table, String type, String ddl, String location) {
     	
     	String schId = dbName + "/" + schema;
     	String tabId = schId + "/" + table;
     	
     	try {
     		if (type=="TABLE") {
-        		this.tableWriter.writeNext(new String[] {tabType,tabId,table, ddl});
+        		this.tableWriter.writeNext(new String[] {tabType,tabId,table,ddl,location});
     			this.linksWriter.writeNext(new String[] {"com.infa.ldm.relational.SchemaTable",schId,tabId});
     		} else {
-        		this.tableWriter.writeNext(new String[] {vewType,tabId,table, ddl});
+    			// there is no location for a view
+        		this.tableWriter.writeNext(new String[] {vewType,tabId,table, ddl, ""});
     			this.linksWriter.writeNext(new String[] {"com.infa.ldm.relational.SchemaView",schId,tabId});
     		}
     	} catch (Exception ex) {
@@ -459,6 +477,20 @@ public class AthenaScanner {
     	return;
     }
     
+    private String extractLocation(String sqlStatement) {
+    	String theLocation="";
+    	
+    	// find "LOCATION" and 
+    	int locStart = sqlStatement.indexOf("LOCATION");
+    	int aposStart = sqlStatement.indexOf("'", locStart+9);
+    	int aposEnd = sqlStatement.indexOf("'", aposStart+2);
+    	
+    	theLocation = sqlStatement.substring(aposStart +1, aposEnd);
+    	
+    	
+    	return theLocation;
+    }
+    
 	
 	/**
 	 * @param args
@@ -474,7 +506,9 @@ public class AthenaScanner {
 			// pass the property file - the constructor will read all input properties
 			scanner = new AthenaScanner(args[0]);			
 		}	
+		scanner.initFiles();
 		scanner.run();
+		scanner.closeFiles();
 		
 		System.out.println("Finished");
 
