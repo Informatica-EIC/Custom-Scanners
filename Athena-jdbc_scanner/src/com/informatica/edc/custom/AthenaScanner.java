@@ -30,7 +30,7 @@ import com.opencsv.CSVWriter;
  */
 public class AthenaScanner {
 
-    public static final String version="0.2test2";
+    public static final String version="0.3";
     
     private String jdbcDriver="";
     private String jdbcUrl="";
@@ -379,8 +379,8 @@ public class AthenaScanner {
 //			otherObjWriter = new CSVWriter(new FileWriter(otherObjectCsvName), ',', CSVWriter.NO_QUOTE_CHARACTER); 
 			otherObjWriter = new CSVWriter(new FileWriter(otherObjectCsvName)); 
 			tableWriter = new CSVWriter(new FileWriter(this.tabCsvName)); 
-			this.columnWriter = new CSVWriter(new FileWriter(columnCsvName), ',', CSVWriter.NO_QUOTE_CHARACTER); 
-			this.linksWriter = new CSVWriter(new FileWriter(this.linksCsvName), ',', CSVWriter.NO_QUOTE_CHARACTER); 
+			this.columnWriter = new CSVWriter(new FileWriter(columnCsvName)); 
+			this.linksWriter = new CSVWriter(new FileWriter(this.linksCsvName)); 
 			
 			otherObjWriter.writeNext(new String[]{"class","identity","core.name"});
 			tableWriter.writeNext(new String[]{"class","identity","core.name", "com.infa.ldm.relational.ViewStatement", "com.infa.ldm.relational.Location"});
