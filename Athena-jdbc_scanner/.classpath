@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<classpath>
+	<classpathentry kind="src" path="src"/>
+	<classpathentry kind="con" path="org.eclipse.jdt.launching.JRE_CONTAINER"/>
+	<classpathentry kind="lib" path="AthenaJDBC42_2.0.6.jar"/>
+	<classpathentry kind="lib" path="D:/tools/log4j.jar"/>
+	<classpathentry kind="lib" path="D:/tools/opencsv-3.10.jar"/>
+	<classpathentry kind="lib" path="AthenaJDBC41-1.1.0.jar"/>
+	<classpathentry kind="output" path="bin"/>
+</classpath>
