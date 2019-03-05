@@ -477,11 +477,11 @@ public class AthenaScanner {
     	
     	try {
     		if (tableType=="TABLE") {
-	    		this.columnWriter.writeNext(new String[] {colType,colId,column,type,length, pos, tabId});
+	    		this.columnWriter.writeNext(new String[] {colType,colId,column,"\""+type+"\"",length, pos, tabId});
 	    		this.linksWriter.writeNext(new String[] {"com.infa.ldm.relational.TableColumn",tabId,colId});
     		} else {
     			// view
-	    		this.columnWriter.writeNext(new String[] {vewColType,colId,column,type,length, pos, tabId});
+	    		this.columnWriter.writeNext(new String[] {vewColType,colId,column,"\""+type+"\"",length, pos, tabId});
 	    		this.linksWriter.writeNext(new String[] {"com.infa.ldm.relational.ViewViewColumn",tabId,colId});
    			
     		}
