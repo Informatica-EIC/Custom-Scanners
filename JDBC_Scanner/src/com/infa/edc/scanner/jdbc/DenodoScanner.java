@@ -6,6 +6,7 @@ import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -17,6 +18,8 @@ public class DenodoScanner extends GenericScanner {
 	protected String databaseName="";
 	
 	protected Map<String, List<String>> viewDbNameMap = new HashMap<String, List<String>>();
+	protected Map<String, List<String>> tableDbNameMap = new HashMap<String, List<String>>();
+	protected Map<String, Map<String, List<String>>> colDbNameMap = new HashMap<String, Map<String, List<String>>>();
 
 	public DenodoScanner(String propertyFile) {
 		super(propertyFile);
@@ -129,6 +132,16 @@ public class DenodoScanner extends GenericScanner {
 			while (rsTables.next()) {
 				// Print
 				tableCount++;
+				
+				String tableName=rsTables.getString("TABLE_NAME");
+				
+				List<String> values = tableDbNameMap.get(schemaName);
+				if (values==null) {
+					values = new ArrayList<String>();
+				}
+				values.add(tableName);
+				tableDbNameMap.put(schemaName, values);
+
 
 				// System.out.println("found one...");
 				System.out.println("\t" + " catalog=" + rsTables.getString("TABLE_CAT") + " schema="
@@ -214,6 +227,25 @@ public class DenodoScanner extends GenericScanner {
 
 //        		createColumn( );
                 this.createColumn(catalogName, schemaName, tableName, columnName, typeName, columnsize, pos, isView);
+                
+                // add to name mapping
+//                if (!isView) {
+                	Map<String, List<String>> schemaMap = colDbNameMap.get(schemaName);
+    				if (schemaMap==null) {
+    					schemaMap = new HashMap<String, List<String>>();
+    					colDbNameMap.put(schemaName, schemaMap);
+    				}
+    				
+    				// check the table is in the schema map
+    				List<String> cols = schemaMap.get(tableName);
+    				if (cols==null) {
+    					// add a new list of columns
+    					cols = new ArrayList<String>();
+    					schemaMap.put(tableName, cols);
+    					
+    				}
+    				cols.add(columnName);
+//                }
 
                 		
 		    }  // end for each column
@@ -232,7 +264,7 @@ public class DenodoScanner extends GenericScanner {
 	 * external lineage (back to s3 files) for athena
 	 */
 	protected void extraProcessing() {
-		System.out.println("extracting internal denodo lineage:");
+		System.out.println("extracting internal denodo view lineage:");
 		
 		// unique list of dataflows...
 		Set datasetFlows = new HashSet();
@@ -294,6 +326,62 @@ public class DenodoScanner extends GenericScanner {
 				
 			} // each view
 		}
+		
+		
+		System.out.println("extra processing to tables...");
+		String tableSourcedFromSQL="SELECT * FROM GET_SOURCE_TABLE() " + 
+				"WHERE input_database_name = ? " + 
+				"AND input_view_name = ?";
+		PreparedStatement tableDeps = null;
+		// for each schema - then view...
+		for (String schema : tableDbNameMap.keySet()) {
+			System.out.println("\tschema=" + schema);
+			for (String table : tableDbNameMap.get(schema)) {
+				System.out.println("\t\ttable=" + table);
+				
+				try {
+					tableDeps = connection.prepareStatement(tableSourcedFromSQL);
+					tableDeps.setString(1, schema);
+					tableDeps.setString(2, table);
+
+			        ResultSet rsDeps = tableDeps.executeQuery();
+			        
+//			        System.out.println("\t\tquery executed to get dependencies using COLUMN_DEPENDENCIES() call");
+			        int tabLvlLineageCount=0;
+			        int colLvlLineageCount=0;
+				    while(rsDeps.next()) {
+				    	String fromSchema = rsDeps.getString("source_schema_name");
+				    	String fromTab = rsDeps.getString("source_table_name");
+				    	String fromSQL = rsDeps.getString("sqlsentence");
+
+				    	System.out.println("\t\t\tsourced from: " + fromSchema + "." + fromTab + " sql=" + fromSQL);
+				    	// get the columns for the table...
+				    	// refactor - call a function to do this
+				    	Map<String, List<String>> tableMap = colDbNameMap.get(schema);
+				    	for (String col : tableMap.get(table)) {
+				    		System.out.println("\t\t\t\tColumn lineage: " + col);
+				    		
+				    		String leftId = fromSchema + "." + fromTab + "." + col;
+				    		String rightId = schema + "." + table + "." + col;
+				    		String[] custLineage = new String[] {"","sourcedbms_" + fromSchema, "denodo_" + schema,leftId,rightId};
+				    		System.out.println(Arrays.toString(custLineage));
+				    	}
+
+				    }
+			        
+			        rsDeps.close();
+			        System.out.println("\t\t\t" + "tableLineageLinks=" + tabLvlLineageCount + " columnLineage=" + colLvlLineageCount);
+			    } catch (SQLException e ) {
+			        e.printStackTrace();
+			    }
+
+				
+				
+				
+			} // each table
+		}
+
+		
 		return;
 	}
 
