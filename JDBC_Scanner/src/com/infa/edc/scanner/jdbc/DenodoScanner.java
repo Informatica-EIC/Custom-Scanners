@@ -2,9 +2,12 @@ package com.infa.edc.scanner.jdbc;
 
 import java.io.File;
 import java.io.FileInputStream;
+import java.io.FileWriter;
+import java.io.IOException;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.sql.Statement;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
@@ -14,8 +17,14 @@ import java.util.Map;
 import java.util.Properties;
 import java.util.Set;
 
+import com.opencsv.CSVWriter;
+
 public class DenodoScanner extends GenericScanner {
+//	public static final String version="0.9";
 	protected String databaseName="";
+	
+	protected CSVWriter custLineageWriter = null; 
+
 	
 	protected Map<String, List<String>> viewDbNameMap = new HashMap<String, List<String>>();
 	protected Map<String, List<String>> tableDbNameMap = new HashMap<String, List<String>>();
@@ -163,15 +172,36 @@ public class DenodoScanner extends GenericScanner {
 
 	}
 	
-	
+	/**
+	 * get view information
+	 */
 	protected void getViews(String catalogName, String schemaName) {
 		try {
-			ResultSet rsViews = dbMetaData.getTables(schemaName, null, null, new String[] { "VIEW" });
+//			ResultSet rsViews = dbMetaData.getTables(schemaName, null, null, new String[] { "VIEW" });
+			
+			PreparedStatement viewMetadata = null;
+			String viewQuery = "SELECT database_name, name, type, user_creator, last_user_modifier, create_date, last_modification_date, description, view_type, folder " +
+					"FROM GET_VIEWS() " + 
+					"WHERE input_database_name = ?";
+			viewMetadata = connection.prepareStatement(viewQuery);
+			viewMetadata.setString(1, schemaName);
+
+	        ResultSet rsViews = viewMetadata.executeQuery();
+
+
+			// instead of calling standard jdbc - use this
+			// SELECT * FROM GET_VIEWS() WHERE input_database_name = '<catalogName>'
+			// will also return the view folder
+			
 			int viewCount = 0;
 			while (rsViews.next()) {
 				// Print
 				viewCount++;
-				String viewName = rsViews.getString("TABLE_NAME");
+				// jdbc standard call returns TABLE_NAME
+				//String viewName = rsViews.getString("TABLE_NAME");
+				
+				// denodo GET_VIEWS() returns "name"
+				String viewName = rsViews.getString("name");
 				
 				List<String> values = viewDbNameMap.get(schemaName);
 				if (values==null) {
@@ -181,13 +211,12 @@ public class DenodoScanner extends GenericScanner {
 				viewDbNameMap.put(schemaName, values);
 
 				// System.out.println("found one...");
-				System.out.println("\t" + " catalog=" + rsViews.getString("TABLE_CAT") + " schema="
-						+ rsViews.getString("TABLE_SCHEM") + " viewname=" + viewName
-						+ " TABLE_TYPE=" + rsViews.getString("TABLE_TYPE")
-//						+ " comments=" + rsViews.getClob("REMARKS")
+				System.out.println("\t" + " catalog=" + rsViews.getString("database_name")  + " viewname=" + viewName
+						+ " TABLE_TYPE=" + rsViews.getString("view_type")
+						+ " comments=" + rsViews.getString("description")
 						);
 				//				System.out.println(rsTables.getMetaData().getColumnTypeName(5));
-				this.createView(catalogName, schemaName, viewName, rsViews.getString("REMARKS"), "");
+				this.createView(catalogName, schemaName, viewName, rsViews.getString("description"), "", rsViews.getString("folder"));
 
 				getColumnsForTable(catalogName, schemaName, viewName, true);
 			}
@@ -353,17 +382,21 @@ public class DenodoScanner extends GenericScanner {
 				    	String fromSchema = rsDeps.getString("source_schema_name");
 				    	String fromTab = rsDeps.getString("source_table_name");
 				    	String fromSQL = rsDeps.getString("sqlsentence");
+				    	String viewWrapperName = rsDeps.getString("view_wrapper_name");
+				    	System.out.println("\t\t\t\tview wrapper=" + viewWrapperName);
+				    	String connectionName = getConnectionNameFromWrapper(schema, viewWrapperName);
 
-				    	System.out.println("\t\t\tsourced from: " + fromSchema + "." + fromTab + " sql=" + fromSQL);
+				    	System.out.println("\t\t\tsourced from: connectio= " + connectionName + " " + fromSchema + "." + fromTab + " sql=" + fromSQL);
 				    	// get the columns for the table...
 				    	// refactor - call a function to do this
 				    	Map<String, List<String>> tableMap = colDbNameMap.get(schema);
 				    	for (String col : tableMap.get(table)) {
-				    		System.out.println("\t\t\t\tColumn lineage: " + col);
+//				    		System.out.println("\t\t\t\tColumn lineage: " + col);
 				    		
 				    		String leftId = fromSchema + "." + fromTab + "." + col;
 				    		String rightId = schema + "." + table + "." + col;
-				    		String[] custLineage = new String[] {"","sourcedbms_" + fromSchema, "denodo_" + schema,leftId,rightId};
+				    		String[] custLineage = new String[] {"",connectionName, "denodo_vdp",leftId,rightId};
+				    		custLineageWriter.writeNext(custLineage);
 				    		System.out.println(Arrays.toString(custLineage));
 				    	}
 
@@ -380,9 +413,116 @@ public class DenodoScanner extends GenericScanner {
 				
 			} // each table
 		}
+		
+		
+		System.out.println("getting datasources JDBC:");
+		try {
+			Statement stJDBC = connection.createStatement(); 
+			ResultSet rsJDBC = stJDBC.executeQuery("LIST DATASOURCES JDBC");
+		    while(rsJDBC.next()) {
+		    	String jdbcConnection = rsJDBC.getString("name");
+		    	System.out.println("jdbc connection = " + jdbcConnection);
+		    }
+
+		} catch (SQLException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+
 
 		
 		return;
+	}
+	
+
+	/**
+	 * get the connection name and database name (if known) 
+	 * @param database - the database the wrapped table is from
+	 * @param wrapper - the name of the wrapped object
+	 * @return
+	 */
+	String getConnectionNameFromWrapper(String database, String wrapper) {
+		String connectionName = "";
+
+		// execute DESC VQL WRAPPER JDBC <db>.<wrapper>;
+		String query="DESC VQL WRAPPER JDBC " + database + "." + wrapper;
+		PreparedStatement wrapperStmnt = null;
+//		String wrapperQuery = "DESC VQL WRAPPER JDBC ";
+
+        try {
+			Statement st = connection.createStatement(); 
+			ResultSet rs = st.executeQuery("DESC VQL WRAPPER JDBC " + database + "." + wrapper);
+			while (rs.next()) {
+				System.out.println("\t\twrapper.....");
+				String result = rs.getString("result");
+				System.out.println("result=\n" + result);
+				
+				// now we need to extract the DATASOURCENAME='<name>'
+				int dsStart = result.indexOf("DATASOURCENAME=");
+				System.out.println("start pos=" + dsStart + " total length=" + result.length());
+				int dsEnd = result.indexOf("\n", dsStart);
+				System.out.println("start end=" + dsEnd + " total length=" + result.length());
+				if (dsStart>0 && dsEnd < result.length()) {
+					connectionName = result.substring(dsStart+15, dsEnd);
+				}
+			}
+		} catch (SQLException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+		
+		return connectionName;
+	}
+
+	
+	protected boolean initFiles() {
+		super.initFiles();
+		// assume working, until it is not
+		boolean initialized=true;
+		String outFolder = customMetadataFolder + "_lineage";
+		String lineageFileName = outFolder + "/" + "denodo_lineage.csv";
+		System.out.println("Step 3.1: initializing denodo specific files: " + lineageFileName);
+
+		try { 
+			// check that the folder exists - if not, create it
+			File directory = new File(String.valueOf(outFolder));
+			if(!directory.exists()){
+				System.out.println("\tfolder: " + outFolder + " does not exist, creating it");
+				directory.mkdir();
+			}
+			//			otherObjWriter = new CSVWriter(new FileWriter(otherObjectCsvName), ',', CSVWriter.NO_QUOTE_CHARACTER); 
+			custLineageWriter = new CSVWriter(new FileWriter(lineageFileName)); 
+			custLineageWriter.writeNext(new String[]{"association","From Connection","To Connection","From Object","To Object"});
+
+			System.out.println("\tDenodo Scanner Files initialized");
+
+		} catch (IOException e1) { 
+			initialized=false;
+			// TODO Auto-generated catch block 
+			e1.printStackTrace(); 
+		} 
+
+		return initialized;
+	}
+
+	/**
+	 * close the files that were opened - ensures that any buffers are cleared
+	 * @return
+	 */
+	protected boolean closeFiles() {
+		super.closeFiles();
+		System.out.println("Step x.1: closing denodo specific files");
+
+		try { 
+			custLineageWriter.close(); 
+		} catch (IOException e) { 
+			// TODO Auto-generated catch block 
+			e.printStackTrace(); 
+			return false;
+		} 
+
+		return true;
+
 	}
 
 

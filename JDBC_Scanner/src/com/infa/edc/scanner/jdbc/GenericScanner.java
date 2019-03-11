@@ -28,7 +28,7 @@ import com.opencsv.CSVWriter;
  *
  */
 public class GenericScanner implements IJdbcScanner {
-	public static final String version="1.0";
+	public static final String version="0.9";
 	public String propertyFileName;
 	public String driverClass;
 	public String dbURL;
@@ -335,7 +335,7 @@ public class GenericScanner implements IJdbcScanner {
 						+ " comments=" + rsViews.getClob("REMARKS")
 						);
 				//				System.out.println(rsTables.getMetaData().getColumnTypeName(5));
-				this.createView(catalogName, schemaName, rsViews.getString("TABLE_NAME"), rsViews.getString("REMARKS"), "");
+				this.createView(catalogName, schemaName, rsViews.getString("TABLE_NAME"), rsViews.getString("REMARKS"), "", "");
 
 				getColumnsForTable(catalogName, schemaName, rsViews.getString("TABLE_NAME"), true);
 			}
@@ -421,7 +421,8 @@ public class GenericScanner implements IJdbcScanner {
 
 			otherObjWriter.writeNext(new String[]{"class","identity","core.name"});
 			tableWriter.writeNext(new String[]{"class","identity","core.name", "core.description"});
-			viewWriter.writeNext(new String[]{"class","identity","core.name", "core.description", "com.infa.ldm.relational.ViewStatement"});
+			viewWriter.writeNext(new String[]{"class","identity","core.name", "core.description", 
+					"com.infa.ldm.relational.ViewStatement", "com.infa.ldm.relational.Location"});
 			columnWriter.writeNext(new String[]{"class","identity","core.name","com.infa.ldm.relational.Datatype"
 					,"com.infa.ldm.relational.DatatypeLength", "com.infa.ldm.relational.Position"
 					, "core.dataSetUuid" 
@@ -514,13 +515,13 @@ public class GenericScanner implements IJdbcScanner {
 		return;
 	}
 
-	public void createView(String dbName, String schema, String table, String desc, String ddl) {
+	public void createView(String dbName, String schema, String table, String desc, String ddl, String location) {
 
 		String schId = dbName + "/" + schema;
 		String tabId = schId + "/" + table;
 
 		try {
-			this.viewWriter.writeNext(new String[] {VIEW_TYPE,tabId,table,desc,ddl});
+			this.viewWriter.writeNext(new String[] {VIEW_TYPE,tabId,table,desc,ddl, location});
 			this.linksWriter.writeNext(new String[] {"com.infa.ldm.relational.SchemaView",schId,tabId});
 		} catch (Exception ex) {
 			ex.printStackTrace();
