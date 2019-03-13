@@ -5,6 +5,8 @@ package com.infa.edc.scanner.jdbc;
 
 import java.io.File;
 import java.io.FileInputStream;
+import java.io.FileNotFoundException;
+import java.io.FileOutputStream;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.nio.file.Files;
@@ -17,7 +19,10 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.List;
 import java.util.Properties;
+import java.util.zip.ZipEntry;
+import java.util.zip.ZipOutputStream;
 
 import com.opencsv.CSVWriter;
 
@@ -35,11 +40,14 @@ public class GenericScanner implements IJdbcScanner {
 	public String userName;
 	public String pwd;
 	public String catalogFilter;
+	public String excludedSchemas="";
 
 	public Connection connection;
 	public DatabaseMetaData dbMetaData;
 
 	protected String customMetadataFolder;
+	
+	protected String dbProductName;
 
 
 	// constants
@@ -51,7 +59,7 @@ public class GenericScanner implements IJdbcScanner {
 	protected String VIEWCOL_TYPE="com.infa.ldm.relational.ViewColumn";
 
 	protected String CATALOG_SCHEMA_FILENAME="catalogAndSchemas.csv";
-	protected String TABLEVIEWS_FILENAME="tablesViews.csv";
+	protected String TABLEVIEWS_FILENAME="tables.csv";
 	protected String VIEWS_FILENAME="views.csv";
 	protected String COLUMN_FILENAME="columns.csv";
 	protected String VCOLUMN_FILENAME="viewColumns.csv";
@@ -102,6 +110,11 @@ public class GenericScanner implements IJdbcScanner {
 				System.out.println("empty value set for custom metadata output folder: using 'custom_metadata_out'");
 				customMetadataFolder = "custom_metadata_out";
 			}
+			
+			excludedSchemas=prop.getProperty("excluded.schemas", "");
+			if (excludedSchemas==null) {
+				excludedSchemas="";
+			}
 
 			catalogFilter = prop.getProperty("catalog", "");
 
@@ -112,6 +125,7 @@ public class GenericScanner implements IJdbcScanner {
 			System.out.println("\tpwd=" + pwd.replaceAll(".", "*"));
 			System.out.println("\tout folder=" + customMetadataFolder);
 			System.out.println("\tcatalog filter=" + catalogFilter);
+			System.out.println("\tschemas to exclude=" + excludedSchemas);
 
 
 
@@ -174,7 +188,20 @@ public class GenericScanner implements IJdbcScanner {
 			try {
 				dbMetaData = connection.getMetaData();
 				String allV = dbMetaData.getDatabaseProductVersion();
+				dbProductName = dbMetaData.getDatabaseProductName();
+				
 				System.out.println("\tgetDatabaseProductVersion()="+allV);
+				System.out.println("\tgetDatabaseProductName()="+dbProductName);
+//				System.out.println("\tcatalog term=" + dbMetaData.getCatalogTerm());
+//				System.out.println("\tschema  term=" + dbMetaData.getSchemaTerm());
+//				System.out.println("\t" + dbMetaData.getDatabaseMajorVersion());
+//				System.out.println("\t" + dbMetaData.getDatabaseMinorVersion());
+//				System.out.println("\t" + dbMetaData.getDriverMajorVersion());
+//				System.out.println("\t" + dbMetaData.getDriverMinorVersion());
+//				System.out.println("\t" + dbMetaData.getDriverName());
+//				System.out.println("\t" + dbMetaData.getJDBCMajorVersion());
+//				System.out.println("\t" + dbMetaData.getDriverVersion());
+//				System.out.println("\t" + dbMetaData.getCatalogSeparator());
 
 			} catch (SQLException e) {
 				// TODO Auto-generated catch block
@@ -211,7 +238,7 @@ public class GenericScanner implements IJdbcScanner {
 				System.out.println("\tcatalog: " + catalogName);
 
 				// create the catalog object
-				if (exportCatalog(catalogName)) {
+				if (isCatalogScanned(catalogName)) {
 					this.createDatabase(catalogName);
 
 					// get schemas
@@ -235,7 +262,7 @@ public class GenericScanner implements IJdbcScanner {
 	 * @param catalogName
 	 * @return
 	 */
-	protected boolean exportCatalog(String catalogName) {
+	protected boolean isCatalogScanned(String catalogName) {
 		// default to all
 		if (catalogFilter.equals("")) {
 			// no filtering - extract them all...
@@ -247,6 +274,26 @@ public class GenericScanner implements IJdbcScanner {
 			return false;
 		}
 	}
+	
+	/**
+	 * return true if the schema should be scanned, false if not
+	 * use properties set for the scanner to determine what to filter in/out
+	 * @param schemaName
+	 * @return true|false
+	 */
+	protected boolean isSchemaScanned(String schemaName) {
+		//@TODO: refactor - allow for a list of schemas to scan too
+		//		System.out.println("should schema be scanned: " + schemaName + " excludeList=" + excludedSchemas);
+		if (this.excludedSchemas.equals("")) {
+			return true;
+		}
+		
+		if (excludedSchemas.contains(schemaName)) {
+			return false;
+		} else {
+			return true;
+		}
+	}
 
 	/**
 	 * get the schemas for a catalog
@@ -254,22 +301,27 @@ public class GenericScanner implements IJdbcScanner {
 	 */
 	public void getSchemas(String catalogName) {
 		try {
-			System.out.println("Step 5: extracting schemas for catalog: " + catalogName);
+			System.out.println("Step 6: extracting schemas for catalog: " + catalogName);
 			ResultSet schemas = dbMetaData.getSchemas(catalogName, null);
 			int schemaCount=0;
 			while(schemas.next()) {
 				schemaCount++;
 				String schemaName = schemas.getString("TABLE_SCHEM");
 				System.out.println("\tschema is: " + schemaName);
+				if (! isSchemaScanned(schemaName)) {
+					System.out.println("\tschema filtered out - not processed: " + schemaName);
+					// go ahead
+				} else {
+					createSchema(catalogName, schemaName);
 
-				createSchema(catalogName, schemaName);
-
-				// process tables
-				getTables(catalogName, schemaName);
+					// process tables
+					getTables(catalogName, schemaName);
 
 
-				// process views
-				getViews(catalogName, schemaName);
+					// process views
+					getViews(catalogName, schemaName);
+				}
+
 			}
 			System.out.println("\tSchemas extracted: " + schemaCount);
 
@@ -296,7 +348,7 @@ public class GenericScanner implements IJdbcScanner {
 				System.out.println("\t" + " catalog=" + rsTables.getString("TABLE_CAT") + " schema="
 						+ rsTables.getString("TABLE_SCHEM") + " tablename=" + rsTables.getString("TABLE_NAME")
 						+ " TABLE_TYPE=" + rsTables.getString("TABLE_TYPE")
-						+ " comments=" + rsTables.getClob("REMARKS")
+//						+ " comments=" + rsTables.getClob("REMARKS")
 						);
 				//				System.out.println(rsTables.getMetaData().getColumnTypeName(5));
 				this.createTable(catalogName, schemaName, rsTables.getString("TABLE_NAME"), rsTables.getString("REMARKS"));
@@ -332,7 +384,7 @@ public class GenericScanner implements IJdbcScanner {
 				System.out.println("\t" + " catalog=" + rsViews.getString("TABLE_CAT") + " schema="
 						+ rsViews.getString("TABLE_SCHEM") + " tablename=" + rsViews.getString("TABLE_NAME")
 						+ " TABLE_TYPE=" + rsViews.getString("TABLE_TYPE")
-						+ " comments=" + rsViews.getClob("REMARKS")
+//						+ " comments=" + rsViews.getClob("REMARKS")
 						);
 				//				System.out.println(rsTables.getMetaData().getColumnTypeName(5));
 				this.createView(catalogName, schemaName, rsViews.getString("TABLE_NAME"), rsViews.getString("REMARKS"), "", "");
@@ -372,7 +424,7 @@ public class GenericScanner implements IJdbcScanner {
 //				System.out.println("\t\t\tcolumnn=" + catalogName + "/" + schemaName + "/" + tableName+ "/" + columnName+ "/" + typeName+ "/" + columnsize+ "/" + pos);
 
 				//        		createColumn( );
-				this.createColumn(catalogName, schemaName, tableName, columnName, typeName, typeName, pos, isView);
+				this.createColumn(catalogName, schemaName, tableName, columnName, typeName, columnsize, pos, isView);
 
 			}  // end for each column
 		} catch (Exception ex) {
@@ -419,7 +471,7 @@ public class GenericScanner implements IJdbcScanner {
 			this.viewColumnWriter = new CSVWriter(new FileWriter(customMetadataFolder + "/" + VCOLUMN_FILENAME)); 
 			this.linksWriter = new CSVWriter(new FileWriter(customMetadataFolder + "/" + LINKS_FILENAME)); 
 
-			otherObjWriter.writeNext(new String[]{"class","identity","core.name"});
+			otherObjWriter.writeNext(new String[]{"class","identity","core.name", "com.infa.ldm.relational.StoreType", "com.infa.ldm.relational.SystemType"});
 			tableWriter.writeNext(new String[]{"class","identity","core.name", "core.description"});
 			viewWriter.writeNext(new String[]{"class","identity","core.name", "core.description", 
 					"com.infa.ldm.relational.ViewStatement", "com.infa.ldm.relational.Location"});
@@ -466,6 +518,48 @@ public class GenericScanner implements IJdbcScanner {
 			return false;
 		} 
 
+		/**
+		 * zip the files
+		 */
+        List<String> srcFiles = Arrays.asList(
+        		customMetadataFolder + "/" + CATALOG_SCHEMA_FILENAME, 
+        		customMetadataFolder + "/" + TABLEVIEWS_FILENAME, 
+        		customMetadataFolder + "/" + VIEWS_FILENAME, 
+        		customMetadataFolder + "/" + VCOLUMN_FILENAME, 
+        		customMetadataFolder + "/" + COLUMN_FILENAME, 
+        		customMetadataFolder + "/" + LINKS_FILENAME 
+        		);
+        
+        try {
+        	System.out.println("creating zip file: " + customMetadataFolder + '/' + this.getClass().getSimpleName() + ".zip");
+	        FileOutputStream fos = new FileOutputStream(customMetadataFolder + '/' + this.getClass().getSimpleName() + ".zip");
+	        ZipOutputStream zipOut = new ZipOutputStream(fos);
+	        for (String srcFile : srcFiles) {
+	            File fileToZip = new File(srcFile);
+	            FileInputStream fis;
+					fis = new FileInputStream(fileToZip);
+		            ZipEntry zipEntry = new ZipEntry(fileToZip.getName());
+		            zipOut.putNextEntry(zipEntry);
+		 
+		            byte[] bytes = new byte[1024];
+		            int length;
+		            while((length = fis.read(bytes)) >= 0) {
+		                zipOut.write(bytes, 0, length);
+		            }
+		            fis.close();
+	        }
+	        zipOut.close();
+	        fos.close();
+		} catch (FileNotFoundException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		} catch (IOException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+
+
+		
 		return true;
 
 	}
@@ -475,7 +569,7 @@ public class GenericScanner implements IJdbcScanner {
 		System.out.println("\tcreating database: " + dbName);
 
 		try {
-			this.otherObjWriter.writeNext(new String[] {DB_TYPE,dbName,dbName});
+			this.otherObjWriter.writeNext(new String[] {DB_TYPE,dbName,dbName, "Relational",dbProductName});
 			this.linksWriter.writeNext(new String[] {"core.ResourceParentChild","",dbName});
 		} catch (Exception ex) {
 			ex.printStackTrace();
@@ -491,7 +585,7 @@ public class GenericScanner implements IJdbcScanner {
 		String schId = dbName + "/" + schema;
 
 		try {
-			this.otherObjWriter.writeNext(new String[] {SCH_TYPE,schId,schema});
+			this.otherObjWriter.writeNext(new String[] {SCH_TYPE,schId,schema,"", ""});
 			this.linksWriter.writeNext(new String[] {"com.infa.ldm.relational.DatabaseSchema",dbName,schId});
 		} catch (Exception ex) {
 			ex.printStackTrace();

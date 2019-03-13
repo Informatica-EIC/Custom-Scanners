@@ -21,6 +21,7 @@ import com.opencsv.CSVWriter;
 
 public class DenodoScanner extends GenericScanner {
 //	public static final String version="0.9";
+
 	protected String databaseName="";
 	
 	protected CSVWriter custLineageWriter = null; 
@@ -107,7 +108,7 @@ public class DenodoScanner extends GenericScanner {
 		    	schemaName = catalogs.getString(1);  //"TABLE_CATALOG"
 		        System.out.println("\tschema: " + schemaName);
 		        
-				if (exportCatalog(schemaName)) {
+				if (isCatalogScanned(schemaName)) {
 			        // create the schema object
 		    		createSchema(catalogName, schemaName);
 		    		// process tables
@@ -182,7 +183,7 @@ public class DenodoScanner extends GenericScanner {
 			PreparedStatement viewMetadata = null;
 			String viewQuery = "SELECT database_name, name, type, user_creator, last_user_modifier, create_date, last_modification_date, description, view_type, folder " +
 					"FROM GET_VIEWS() " + 
-					"WHERE input_database_name = ?";
+					"WHERE input_database_name = ? and view_type>0";
 			viewMetadata = connection.prepareStatement(viewQuery);
 			viewMetadata.setString(1, schemaName);
 
@@ -286,6 +287,73 @@ public class DenodoScanner extends GenericScanner {
 
 	}
 	
+	protected Map<String, String> privateDepsMap = new HashMap<String, String>();
+	
+	/**
+	 * read the private view column dependencies and store in a memory model
+	 * for lookup later
+	 * @param dbname
+	 * @param viewName
+	 */
+	protected void extractPrivateViewDeps(String dbname, String viewName) {
+		System.out.println("pre processoor for :-" + dbname + "__" + viewName);
+		String query="select distinct * " + 
+				"from  COLUMN_DEPENDENCIES (?, ?, null)  " + 
+				"where depth=1 and input_view_name=? " + 
+				"and private_view='true' " + 
+				"order by input_view_name, dependency_identifier";
+        try {
+    		PreparedStatement deps = connection.prepareStatement(query);
+			deps.setString(1, dbname);
+	        deps.setString(2, viewName);
+	        deps.setString(3, viewName);
+
+	        ResultSet rsDeps = deps.executeQuery();
+	        int recCount=0;
+		    while(rsDeps.next()) {
+		    	recCount++;
+		    	String fromDB = rsDeps.getString("dependency_database_name");
+		    	String fromTab = rsDeps.getString("dependency_name");
+		    	String fromCol = rsDeps.getString("dependency_column_name");
+		    	String toCol = rsDeps.getString("column_name");
+		    	String expression = rsDeps.getString("expression");
+		    	String private_view = rsDeps.getString("private_view");
+		    	String view_name = rsDeps.getString("view_name");
+		    	
+		    	String toKey = view_name + "/" + toCol;
+		    	String fromKey = fromTab + "/" + fromCol;
+		    	
+		    	System.out.println("\nfrom " + fromKey);
+		    	System.out.println("to   " + toKey);
+		    	
+		    	if (privateDepsMap.containsKey(toKey)) {
+		    		System.out.println("duplicte????? rec-" + recCount + " toKey="  + toKey + " fromKey=" + fromKey);
+		    	} else {
+		    		privateDepsMap.put(toKey, fromKey);
+		    	}
+		    	
+		    }
+	        System.out.println("records processed: " + recCount + " maps created:=" + privateDepsMap.size());
+		} catch (SQLException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+
+		
+	}	
+	
+	protected String getActualLineageForInternalObject(String aKey) {
+		String ret = "";
+		ret = aKey;
+		System.out.println("checking from key=" + aKey);
+		while (privateDepsMap.containsKey(ret)) {
+			ret = privateDepsMap.get(ret);
+			System.out.println("\tret=" + ret);
+		}
+		
+		System.out.println("returning: " + ret);
+		return ret;
+	}
 	
 	/**
 	 * extra processing can call some dbms specific functions
@@ -299,11 +367,18 @@ public class DenodoScanner extends GenericScanner {
 		Set datasetFlows = new HashSet();
 		
 		PreparedStatement deps = null;
-		String dependenciesQuery = "select input_view_database_name, input_view_name, " +
-				"view_name, column_name, dependency_database_name, dependency_name, " +
-				"dependency_column_name, expression, depth " + 
+//		String dependenciesQuery = "select input_view_database_name, input_view_name, " +
+//				"view_name, column_name, dependency_database_name, dependency_name, " +
+//				"dependency_column_name, expression, depth " + 
+//				"from  COLUMN_DEPENDENCIES (?, ?, null)  " + 
+//				"where depth=1 and view_name=?  " + 
+//				"order by input_view_name, view_name, column_name, depth;";
+		
+		// if private_view='true' and depencency_type='Base View' - we have the last element
+		String dependenciesQuery = "select * " +
 				"from  COLUMN_DEPENDENCIES (?, ?, null)  " + 
-				"where depth=1 and view_name=?  " + 
+				"where depth=1 and input_view_name=?  " + 
+				"and private_view='false' " + 
 				"order by input_view_name, view_name, column_name, depth;";
 		
 		// for each schema - then view...
@@ -313,6 +388,8 @@ public class DenodoScanner extends GenericScanner {
 				System.out.println("\t\tview=" + view);
 				
 				try {
+					this.extractPrivateViewDeps(schema, view);
+					
 			        deps = connection.prepareStatement(dependenciesQuery);
 			        deps.setString(1, schema);
 			        deps.setString(2, view);
@@ -323,32 +400,59 @@ public class DenodoScanner extends GenericScanner {
 //			        System.out.println("\t\tquery executed to get dependencies using COLUMN_DEPENDENCIES() call");
 			        int tabLvlLineageCount=0;
 			        int colLvlLineageCount=0;
+			        int privateDeps=0;
 				    while(rsDeps.next()) {
 				    	String fromDB = rsDeps.getString("dependency_database_name");
 				    	String fromTab = rsDeps.getString("dependency_name");
 				    	String fromCol = rsDeps.getString("dependency_column_name");
 				    	String toCol = rsDeps.getString("column_name");
-				    	
-//				    	System.out.println(fromDB +"/" +fromTab + "/" + fromCol + "==>>" + schema + "/" + view + "/" + toCol);
-				    	String lefttabId = databaseName + "/" + fromDB + "/" +fromTab;
-				    	String righttabId = databaseName + "/" + schema + "/" +view;
-				    	String leftId = databaseName + "/" + fromDB + "/" +fromTab + "/" + fromCol;
-				    	String rightId = databaseName + "/" + schema + "/" +view + "/" + toCol;
-				    	// field level flow...
-				    	if (!datasetFlows.contains(lefttabId + ":" + righttabId)) {
-							linksWriter.writeNext(new String[] {"core.DataSetDataFlow",lefttabId,righttabId});
-							tabLvlLineageCount++;
-							datasetFlows.add(lefttabId + ":" + righttabId);
-				    		
-				    	}
-						linksWriter.writeNext(new String[] {"core.DirectionalDataFlow",leftId,rightId});
-						colLvlLineageCount++;
+				    	String expression = rsDeps.getString("expression");
+				    	String private_view = rsDeps.getString("private_view");
+				    	String viewName = rsDeps.getString("view_name");
+				    	String viewType = rsDeps.getString("view_type");
 
+				    	if (expression != null) {
+				    		System.out.println("Expression===" + expression + " from:" + fromCol + " private?=" +private_view);
+				    	}
+
+				    	if (viewType.equals("Base View")) {
+//				    		System.out.println("skipping internal lineage for base view - processed later..." + viewName + " <> " + fromTab + " fc=" + fromCol);
+//				    		privateDeps++;
+				    	} else {
+					    	String lefttabId = databaseName + "/" + fromDB + "/" +fromTab;
+					    	String righttabId = databaseName + "/" + schema + "/" +view;
+					    	String leftId = databaseName + "/" + fromDB + "/" +fromTab + "/" + fromCol;
+					    	String rightId = databaseName + "/" + schema + "/" +view + "/" + toCol;
+
+				    		
+				    		// check if the dependency is an internal one...
+				    		String fromKey = fromTab + "/" + fromCol;
+				    		System.out.println("checking " + fromKey + " " + privateDepsMap.containsKey(fromKey));
+				    		if (privateDepsMap.containsKey(fromKey)) {
+				    			// get the actual lineage colum upstream
+				    			String retStr = this.getActualLineageForInternalObject(fromKey);
+				    			leftId = databaseName + "/" + fromDB + "/" + retStr;
+								linksWriter.writeNext(new String[] {"core.DirectionalDataFlow",leftId,rightId});
+								// @TODO: table level lineage here too	
+				    		} else {
+
+		//				    	System.out.println(fromDB +"/" +fromTab + "/" + fromCol + "==>>" + schema + "/" + view + "/" + toCol);
+						    	// field level flow...
+						    	if (!datasetFlows.contains(lefttabId + ":" + righttabId)) {
+									linksWriter.writeNext(new String[] {"core.DataSetDataFlow",lefttabId,righttabId});
+									tabLvlLineageCount++;
+									datasetFlows.add(lefttabId + ":" + righttabId);
+						    		
+						    	}
+								linksWriter.writeNext(new String[] {"core.DirectionalDataFlow",leftId,rightId});
+								colLvlLineageCount++;
+				    		}
+				    	}
 				    }
 
 			        
 			        rsDeps.close();
-			        System.out.println("\t\t\t" + "viewLineageLinks=" + tabLvlLineageCount + " columnLineage=" + colLvlLineageCount);
+			        System.out.println("\t\t\t" + "viewLineageLinks=" + tabLvlLineageCount + " columnLineage=" + colLvlLineageCount + " private dependencies:" + privateDeps);
 			    } catch (SQLException e ) {
 			        e.printStackTrace();
 			    }
@@ -363,6 +467,7 @@ public class DenodoScanner extends GenericScanner {
 				"AND input_view_name = ?";
 		PreparedStatement tableDeps = null;
 		// for each schema - then view...
+		
 		for (String schema : tableDbNameMap.keySet()) {
 			System.out.println("\tschema=" + schema);
 			for (String table : tableDbNameMap.get(schema)) {
@@ -380,24 +485,29 @@ public class DenodoScanner extends GenericScanner {
 			        int colLvlLineageCount=0;
 				    while(rsDeps.next()) {
 				    	String fromSchema = rsDeps.getString("source_schema_name");
+				    	String fromCatalog = rsDeps.getString("source_catalog_name");
+				    	if (fromSchema==null) {
+				    		fromSchema=fromCatalog;
+				    	}
 				    	String fromTab = rsDeps.getString("source_table_name");
 				    	String fromSQL = rsDeps.getString("sqlsentence");
 				    	String viewWrapperName = rsDeps.getString("view_wrapper_name");
 				    	System.out.println("\t\t\t\tview wrapper=" + viewWrapperName);
 				    	String connectionName = getConnectionNameFromWrapper(schema, viewWrapperName);
 
-				    	System.out.println("\t\t\tsourced from: connectio= " + connectionName + " " + fromSchema + "." + fromTab + " sql=" + fromSQL);
+//				    	System.out.println("\t\t\tsourced from: connectio= " + connectionName + " " + fromSchema + "." + fromTab + " sql=" + fromSQL);
 				    	// get the columns for the table...
 				    	// refactor - call a function to do this
 				    	Map<String, List<String>> tableMap = colDbNameMap.get(schema);
 				    	for (String col : tableMap.get(table)) {
 //				    		System.out.println("\t\t\t\tColumn lineage: " + col);
 				    		
-				    		String leftId = fromSchema + "." + fromTab + "." + col;
-				    		String rightId = schema + "." + table + "." + col;
+				    		String leftId = fromSchema + "/" + fromTab + "/" + col;
+				    		String rightId = schema + "/" + table + "/" + col;
 				    		String[] custLineage = new String[] {"",connectionName, "denodo_vdp",leftId,rightId};
+				    		colLvlLineageCount++;
 				    		custLineageWriter.writeNext(custLineage);
-				    		System.out.println(Arrays.toString(custLineage));
+//				    		System.out.println(Arrays.toString(custLineage));
 				    	}
 
 				    }
@@ -414,7 +524,7 @@ public class DenodoScanner extends GenericScanner {
 			} // each table
 		}
 		
-		
+		/**
 		System.out.println("getting datasources JDBC:");
 		try {
 			Statement stJDBC = connection.createStatement(); 
@@ -428,6 +538,7 @@ public class DenodoScanner extends GenericScanner {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
 		}
+		*/
 
 
 		
@@ -453,15 +564,15 @@ public class DenodoScanner extends GenericScanner {
 			Statement st = connection.createStatement(); 
 			ResultSet rs = st.executeQuery("DESC VQL WRAPPER JDBC " + database + "." + wrapper);
 			while (rs.next()) {
-				System.out.println("\t\twrapper.....");
+//				System.out.println("\t\twrapper.....");
 				String result = rs.getString("result");
-				System.out.println("result=\n" + result);
+//				System.out.println("result=\n" + result);
 				
 				// now we need to extract the DATASOURCENAME='<name>'
 				int dsStart = result.indexOf("DATASOURCENAME=");
-				System.out.println("start pos=" + dsStart + " total length=" + result.length());
+//				System.out.println("start pos=" + dsStart + " total length=" + result.length());
 				int dsEnd = result.indexOf("\n", dsStart);
-				System.out.println("start end=" + dsEnd + " total length=" + result.length());
+//				System.out.println("start end=" + dsEnd + " total length=" + result.length());
 				if (dsStart>0 && dsEnd < result.length()) {
 					connectionName = result.substring(dsStart+15, dsEnd);
 				}
