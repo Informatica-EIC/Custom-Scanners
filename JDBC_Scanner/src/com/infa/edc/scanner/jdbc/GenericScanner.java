@@ -3,6 +3,7 @@
  */
 package com.infa.edc.scanner.jdbc;
 
+import java.io.Console;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
@@ -24,6 +25,9 @@ import java.util.Properties;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipOutputStream;
 
+import javax.swing.JOptionPane;
+import javax.swing.JPasswordField;
+
 import com.opencsv.CSVWriter;
 
 
@@ -33,7 +37,7 @@ import com.opencsv.CSVWriter;
  *
  */
 public class GenericScanner implements IJdbcScanner {
-	public static final String version="0.9";
+	public static final String version="0.9.1";
 	public String propertyFileName;
 	public String driverClass;
 	public String dbURL;
@@ -48,6 +52,15 @@ public class GenericScanner implements IJdbcScanner {
 	protected String customMetadataFolder;
 	
 	protected String dbProductName;
+	
+	protected static String DISCLAIMER="\n*********************************************************************\n" +
+	 "By using this custom scanner, you are agreeing to the following:-\n"
+	 + "- this custom scanner is not officially supported by Informatica\n"
+	 + "  it was created for situations where the generic JDBC scanner\n"
+	 + "  does not produce the correct results.\n"
+	 + "- it has only been tested with limited test/cases, and may fail\n"
+	 + "- feedback/suggestions welcome at <tdb - github url>\n"
+	 + "*********************************************************************";
 
 
 	// constants
@@ -75,7 +88,27 @@ public class GenericScanner implements IJdbcScanner {
 	protected CSVWriter linksWriter = null; 
 
 
+	public static boolean showDisclaimer() {
+		System.out.println(DISCLAIMER);
+		Console c=System.console();
+		String response;
+		boolean hasAgreed=false;
+		if (c==null) { //IN ECLIPSE IDE (prompt for password using swing ui 
+			System.out.println("no console found...");
+			final JPasswordField pf = new JPasswordField(); 
+			String message = "Do you agree to this disclaimer? Y or N ";
+			response = JOptionPane.showConfirmDialog( null, pf, message, JOptionPane.OK_CANCEL_OPTION, 
+						JOptionPane.QUESTION_MESSAGE ) == JOptionPane.OK_OPTION ? new String( pf.getPassword() ) : "response (Y|N)"; 
+		} else { //Outside Eclipse IDE  (e.g. windows/linux console)
+			response =  new String(c.readLine("agree (Y|N)? ") );
+		}		
+		System.out.println("user entered:" + response);
+		if (response!=null && response.equalsIgnoreCase("Y")) {
+			hasAgreed=true;
+		}
 
+		return hasAgreed;
+	}
 
 	/**
 	 * read the property file to get db connection settings
@@ -101,7 +134,7 @@ public class GenericScanner implements IJdbcScanner {
 			pwd = prop.getProperty("pwd");
 			if (pwd.equals("<prompt>")) {
 				System.out.println("password set to <prompt> for user " + userName  + " - waiting for user input...");
-				//				pwd = APIUtils.getPassword();
+				pwd = getPassword();
 				//				System.out.println("pwd chars entered (debug):  " + pwd.length());
 			}
 
@@ -444,9 +477,12 @@ public class GenericScanner implements IJdbcScanner {
 			System.out.println("JDBC Custom scanner for EDC: missing configuration properties file: usage:  genericScanner <folder>/<config file>.properties");	
 		} else {
 			System.out.println("JDBC Custom scanner: " + args[0] + " currentTimeMillis=" +System.currentTimeMillis());
-			GenericScanner scanner = new GenericScanner(args[0]);
-
-			scanner.run();
+			if (showDisclaimer()) {
+				GenericScanner scanner = new GenericScanner(args[0]);
+				scanner.run();
+			} else {
+				System.out.println("Disclaimer was declined - exiting");
+			}
 		}
 
 	}
@@ -658,4 +694,31 @@ public class GenericScanner implements IJdbcScanner {
 		
 		return;
 	}
+	
+	
+	/**
+	 * prompt the user for a password, using the console (default)
+	 * for development environments like eclipse, their is no standard console.
+	 * so in that case we open a swing ui panel with an input field to accept a password
+	 * 
+	 * @return the password entered
+	 * 
+	 * @author dwrigley
+	 */
+	public static String getPassword() {
+		String password;
+		Console c=System.console();
+		if (c==null) { //IN ECLIPSE IDE (prompt for password using swing ui    	
+			final JPasswordField pf = new JPasswordField(); 
+			String message = "User password:";
+			password = JOptionPane.showConfirmDialog( null, pf, message, JOptionPane.OK_CANCEL_OPTION, 
+						JOptionPane.QUESTION_MESSAGE ) == JOptionPane.OK_OPTION ? new String( pf.getPassword() ) : "enter your pwd here...."; 
+			System.out.println("pwd=" + password);
+		} else { //Outside Eclipse IDE  (e.g. windows/linux console)
+			password =  new String(c.readPassword("User password: "));
+		}		
+		return password;
+	}
+	
+
 }

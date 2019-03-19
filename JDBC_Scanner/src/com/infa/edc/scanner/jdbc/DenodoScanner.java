@@ -71,9 +71,12 @@ public class DenodoScanner extends GenericScanner {
 			System.out.println("Denodo Custom scanner for EDC: missing configuration properties file: usage:  genericScanner <folder>/<config file>.properties");	
 		} else {
 			System.out.println("Denodo Custom scanner: " + args[0] + " currentTimeMillis=" +System.currentTimeMillis());
-			DenodoScanner scanner = new DenodoScanner(args[0]);
-			
-			scanner.run();	
+			if (showDisclaimer()) {
+				DenodoScanner scanner = new DenodoScanner(args[0]);
+				scanner.run();	
+			} else {
+				System.out.println("Disclaimer was declined - exiting");
+			}
 
 		}
 
