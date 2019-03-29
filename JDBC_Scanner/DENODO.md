@@ -86,7 +86,7 @@ Note:  when starting the scanner - the following disclaimer will be displayed:
 By using this custom scanner, you are agreeing to the following:-
 - this custom scanner is not officially supported by Informatica
   it was created for situations where the generic JDBC scanner
-  does not produce the correct results of fails to extract any metadata.
+  does not produce the correct results or fails to extract any metadata.
 - It has only been tested with limited test/cases, and may report exceptions or fail.
 - Issues can be created on githib:- 
   https://github.com/Informatica-EIC/Custom-Scanners  (JDBC_Scanner folder)
@@ -118,7 +118,6 @@ the user will be prompted to agree to this disclaimer each time the scanner is r
 
 * profiling will not be possible (yet, until it is supported with custom scans)
 * custom lineage for tables is only possible for JDBC connections (need test cases for other types)
-* calculated fields are not currently processed (for lineage) - this is a work-in-progress, to parse the expression logic and link to the correct fields
 * this is not an official informatica supported product - but any issues can be logged on github
 * custom lineage to non-relational resources has not been attempted
 

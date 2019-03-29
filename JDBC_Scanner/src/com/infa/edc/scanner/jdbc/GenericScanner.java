@@ -57,7 +57,7 @@ public class GenericScanner implements IJdbcScanner {
 	 "By using this custom scanner, you are agreeing to the following:-\n"
 	 + "- this custom scanner is not officially supported by Informatica\n"
 	 + "  it was created for situations where the generic JDBC scanner\n"
-	 + "  does not produce the correct results of fails to extract any metadata.\n"
+	 + "  does not produce the correct results or fails to extract any metadata.\n"
 	 + "- It has only been tested with limited test/cases, and may report exceptions or fail.\n"
 	 + "- Issues can be created on githib:- \n"
 	 + "  https://github.com/Informatica-EIC/Custom-Scanners  (JDBC_Scanner folder)\n"
