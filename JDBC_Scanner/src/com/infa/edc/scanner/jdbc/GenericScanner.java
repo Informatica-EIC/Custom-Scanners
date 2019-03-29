@@ -53,14 +53,16 @@ public class GenericScanner implements IJdbcScanner {
 	
 	protected String dbProductName;
 	
-	protected static String DISCLAIMER="\n*********************************************************************\n" +
+	protected static String DISCLAIMER="\n************************************ Disclaimer *************************************\n" +
 	 "By using this custom scanner, you are agreeing to the following:-\n"
 	 + "- this custom scanner is not officially supported by Informatica\n"
 	 + "  it was created for situations where the generic JDBC scanner\n"
-	 + "  does not produce the correct results.\n"
-	 + "- it has only been tested with limited test/cases, and may fail\n"
-	 + "- feedback/suggestions welcome at <tdb - github url>\n"
-	 + "*********************************************************************";
+	 + "  does not produce the correct results of fails to extract any metadata.\n"
+	 + "- It has only been tested with limited test/cases, and may report exceptions or fail.\n"
+	 + "- Issues can be created on githib:- \n"
+	 + "  https://github.com/Informatica-EIC/Custom-Scanners  (JDBC_Scanner folder)\n"
+	 + "*************************************************************************************\n"
+	 + "\n";
 
 
 	// constants
@@ -301,11 +303,21 @@ public class GenericScanner implements IJdbcScanner {
 			// no filtering - extract them all...
 			return true;
 		}
-		if (catalogFilter.contains(catalogName)) {
-			return true;
-		} else {
-			return false;
+		// split the catalog filter by , 
+		String[] catalogs = catalogFilter.split(",");
+//		System.out.println("filter conditions for catalog " + catalogs);
+		for (String catFilter: catalogs) {
+//			System.out.println("does " + catFilter + "=" + catalogName + " " + catFilter.equalsIgnoreCase(catalogName));
+			if (catFilter.equalsIgnoreCase(catalogName) ) {
+				return true;
+			}
 		}
+//		if (catalogFilter.contains(catalogName)) {
+//			return true;
+//		} else {
+//			return false;
+//		}
+		return false;
 	}
 	
 	/**
@@ -474,15 +486,34 @@ public class GenericScanner implements IJdbcScanner {
 	 */
 	public static void main(String[] args) {
 		if (args.length==0) {
-			System.out.println("JDBC Custom scanner for EDC: missing configuration properties file: usage:  genericScanner <folder>/<config file>.properties");	
-		} else {
-			System.out.println("JDBC Custom scanner: " + args[0] + " currentTimeMillis=" +System.currentTimeMillis());
-			if (showDisclaimer()) {
-				GenericScanner scanner = new GenericScanner(args[0]);
-				scanner.run();
-			} else {
-				System.out.println("Disclaimer was declined - exiting");
+			System.out.println("JDBC Custom scanner for EDC: missing configuration properties file: usage:  genericScanner <folder>/<config file>.properties");
+			System.exit(0);
+		}
+
+		System.out.println("JDBC Custom scanner: " + args[0] + " currentTimeMillis=" +System.currentTimeMillis());
+
+		// check to see if a disclaimer override parameter was passed
+		String disclaimerParm="";
+		if (args.length>=2) {
+			// 2nd argument is an "agreeToDisclaimer" string
+			disclaimerParm=args[1];
+//			System.out.println("disclaimer parameter passed: " + disclaimerParm);
+			if ("agreeToDisclaimer".equalsIgnoreCase(disclaimerParm)) {
+				System.out.println("the following disclaimer was agreed to by passing 'agreeToDisclaimer' as 2nd parameter");
+				System.out.println(DISCLAIMER);
 			}
+		}
+		
+		
+		// 1 of 2 conditions must be true for the scanner to start
+		// 1 - 2nd parameter is equal to "agreeToDisclaimer"
+		// or (if no parm passed, or value does not match)
+		// then the user must agree to the prompt
+		if ("agreeToDisclaimer".equalsIgnoreCase(disclaimerParm) || showDisclaimer()) {
+			GenericScanner scanner = new GenericScanner(args[0]);
+			scanner.run();
+		} else {
+			System.out.println("Disclaimer was declined - exiting");
 		}
 
 	}
@@ -517,7 +548,8 @@ public class GenericScanner implements IJdbcScanner {
 			});
 			viewColumnWriter.writeNext(new String[]{"class","identity","core.name","com.infa.ldm.relational.Datatype"
 					,"com.infa.ldm.relational.DatatypeLength", "com.infa.ldm.relational.Position"
-					, "core.dataSetUuid" 
+					, "core.dataSetUuid"
+					, "com.infa.ldm.relational.ViewStatement"
 			});
 
 			linksWriter.writeNext(new String[]{"association","fromObjectIdentity","toObjectIdentity"});
@@ -539,7 +571,7 @@ public class GenericScanner implements IJdbcScanner {
 	 * @return
 	 */
 	protected boolean closeFiles() {
-		System.out.println("Step x: closing output files");
+		System.out.println("closing output files");
 
 		try { 
 			otherObjWriter.close(); 
@@ -677,6 +709,24 @@ public class GenericScanner implements IJdbcScanner {
 				this.linksWriter.writeNext(new String[] {"com.infa.ldm.relational.ViewViewColumn",tabId,colId});
 			}
 
+		} catch (Exception ex) {
+			ex.printStackTrace();
+		} 
+
+		return;
+	}
+	
+	
+	protected void createViewColumn(String dbName, String schema, String table, String column, 
+			String type, String length, String pos, String expression) {
+
+		String schId = dbName + "/" + schema;
+		String tabId = schId + "/" + table;
+		String colId = tabId + "/" + column;
+
+		try {
+			this.viewColumnWriter.writeNext(new String[] {VIEWCOL_TYPE,colId,column,type,length, pos, tabId, expression});
+			this.linksWriter.writeNext(new String[] {"com.infa.ldm.relational.ViewViewColumn",tabId,colId});
 		} catch (Exception ex) {
 			ex.printStackTrace();
 		} 
