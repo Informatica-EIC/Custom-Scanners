@@ -19,7 +19,7 @@ import java.util.Set;
 import com.opencsv.CSVWriter;
 
 public class DenodoScanner extends GenericScanner {
-	public static final String version="0.9.1";
+	public static final String version="0.9.2";
 
 	protected String databaseName="";
 	
@@ -503,9 +503,9 @@ public class DenodoScanner extends GenericScanner {
 //		System.out.println("view column lineage extraction - using column_dependencies stored procedure");
 		String query="select * " + 
 				"from   COLUMN_DEPENDENCIES (?, ?, ?)  " + 
-				"where depth=1 " + 
-				"order by input_view_name, view_name, column_name, view_identifier desc, depth;"
-				;
+				"where depth=1 "; //+ 
+				// "order by input_view_name, view_name, column_name, view_identifier desc, depth;"
+				//;
 		
 //		System.out.println("elements scanned..." + elementsScanned.size());
 //		System.out.println(elementsScanned);
@@ -544,7 +544,7 @@ public class DenodoScanner extends GenericScanner {
 		    		} else {
 		    			// it could be a virtual column (for a join etc, or an expression field)
 		    			// special case - for expressions the parent object might match - but the column name may be a multi-field (with a comma)
-		    			if (fromCol.contains(",")) {
+		    			if (fromCol != null && fromCol.contains(",")) {
 		    				expressionsProcessed++;
 //		    				System.out.println("expr field...");
 		    				if (datasetsScanned.contains(fromDB + "/" + fromTab)) {
