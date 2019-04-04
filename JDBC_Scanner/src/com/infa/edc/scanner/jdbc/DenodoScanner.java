@@ -19,7 +19,7 @@ import java.util.Set;
 import com.opencsv.CSVWriter;
 
 public class DenodoScanner extends GenericScanner {
-	public static final String version="0.9.1";
+	public static final String version="0.9.2";
 
 	protected String databaseName="";
 	
@@ -503,9 +503,9 @@ public class DenodoScanner extends GenericScanner {
 //		System.out.println("view column lineage extraction - using column_dependencies stored procedure");
 		String query="select * " + 
 				"from   COLUMN_DEPENDENCIES (?, ?, ?)  " + 
-				"where depth=1 " + 
-				"order by input_view_name, view_name, column_name, view_identifier desc, depth;"
-				;
+				"where depth=1 "; //+ 
+				// "order by input_view_name, view_name, column_name, view_identifier desc, depth;"
+				//;
 		
 //		System.out.println("elements scanned..." + elementsScanned.size());
 //		System.out.println(elementsScanned);
@@ -544,7 +544,7 @@ public class DenodoScanner extends GenericScanner {
 		    		} else {
 		    			// it could be a virtual column (for a join etc, or an expression field)
 		    			// special case - for expressions the parent object might match - but the column name may be a multi-field (with a comma)
-		    			if (fromCol.contains(",")) {
+		    			if (fromCol != null && fromCol.contains(",")) {
 		    				expressionsProcessed++;
 //		    				System.out.println("expr field...");
 		    				if (datasetsScanned.contains(fromDB + "/" + fromTab)) {
@@ -791,6 +791,7 @@ public class DenodoScanner extends GenericScanner {
 				"AND input_view_name = ?";
 		PreparedStatement tableDeps = null;
 		// for each schema - then view...
+		int allCustLineageCount=0;
 		
 		for (String schema : tableDbNameMap.keySet()) {
 			System.out.println("\tschema=" + schema);
@@ -805,8 +806,8 @@ public class DenodoScanner extends GenericScanner {
 			        ResultSet rsDeps = tableDeps.executeQuery();
 			        
 //			        System.out.println("\t\tquery executed to get dependencies using COLUMN_DEPENDENCIES() call");
-			        int tabLvlLineageCount=0;
-			        int colLvlLineageCount=0;
+//			        int tabLvlLineageCount=0;
+			        int custLineageCount=0;
 				    while(rsDeps.next()) {
 				    	String fromSchema = rsDeps.getString("source_schema_name");
 				    	String fromCatalog = rsDeps.getString("source_catalog_name");
@@ -829,7 +830,8 @@ public class DenodoScanner extends GenericScanner {
 				    		String leftId = fromSchema + "/" + fromTab + "/" + col;
 				    		String rightId = schema + "/" + table + "/" + col;
 				    		String[] custLineage = new String[] {"",connectionName, "denodo_vdp",leftId,rightId};
-				    		colLvlLineageCount++;
+				    		custLineageCount++;
+				    		allCustLineageCount++;
 				    		custLineageWriter.writeNext(custLineage);
 //				    		System.out.println(Arrays.toString(custLineage));
 				    	}
@@ -837,7 +839,7 @@ public class DenodoScanner extends GenericScanner {
 				    }
 			        
 			        rsDeps.close();
-			        System.out.println("\t\t\t" + "tableLineageLinks=" + tabLvlLineageCount + " columnLineage=" + colLvlLineageCount);
+			        System.out.println("\t\t\t" + "custom lineage links written=" + custLineageCount);
 			    } catch (SQLException e ) {
 			    	System.out.println("\n**************  error executing query." + e.getMessage() + "\n**************  end of error");
 //			        e.printStackTrace();
@@ -847,6 +849,7 @@ public class DenodoScanner extends GenericScanner {
 		    	
 			    }
 
+				System.out.println("total custom lineage links created: " + allCustLineageCount);
 				
 				
 				
