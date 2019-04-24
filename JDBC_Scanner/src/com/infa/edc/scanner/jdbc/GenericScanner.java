@@ -10,15 +10,11 @@ import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.FileWriter;
 import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.LinkOption;
-import java.nio.file.Paths;
 import java.sql.Connection;
 import java.sql.DatabaseMetaData;
 import java.sql.DriverManager;
 import java.sql.ResultSet;
 import java.sql.SQLException;
-import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Properties;
@@ -176,7 +172,6 @@ public class GenericScanner implements IJdbcScanner {
 	 */
 	@Override
 	public Connection getConnection(String classType, String url, String user, String pwd) {
-		// TODO Auto-generated method stub
 		System.out.println("Step 1: validating jdbc driver class: " + classType + " using:" + this.getClass().getName());
 		try {
 			Class.forName(classType);
@@ -196,7 +191,6 @@ public class GenericScanner implements IJdbcScanner {
 			return con;
 		} catch (SQLException e) {
 			System.out.println("connection failed for url=" + url + " " + e.getClass().getName() + "");
-			// TODO Auto-generated catch block
 			e.printStackTrace();
 		}  
 
@@ -239,7 +233,6 @@ public class GenericScanner implements IJdbcScanner {
 //				System.out.println("\t" + dbMetaData.getCatalogSeparator());
 
 			} catch (SQLException e) {
-				// TODO Auto-generated catch block
 				System.out.println("\terror getting DatabaseMetaData object from connection - exiting");
 				e.printStackTrace();
 				return;
@@ -268,7 +261,10 @@ public class GenericScanner implements IJdbcScanner {
 		try {
 			catalogs = dbMetaData.getCatalogs();
 			String catalogName;
+			
+			int catCount=0;
 			while (catalogs.next()) {
+				catCount++;
 				catalogName = catalogs.getString(1);  //"TABLE_CATALOG"
 				System.out.println("\tcatalog: " + catalogName);
 
@@ -283,8 +279,21 @@ public class GenericScanner implements IJdbcScanner {
 					System.out.println("\tcatalog=" + catalogName + " skipped - not included in catalog filter: " + catalogFilter);
 				}
 			}
+			
+			// note:  for some databases/drivers - getCatalogs returns nothing (e.g gemfire)
+			// so we are going to create a database for each entry in catalogFilter & then call getSchemas for each entry too
+			// this worked for gemfire
+
+			if (catCount==0) {
+				String[] catalogFilterParts =  catalogFilter.split(",");
+				System.out.println("no catalogs found using dbMetaData.getCatalogs(); - forcing catalog=" + catalogFilterParts);
+//				System.out.println("filter conditions for catalog " + catalogs);
+				for (String catFilter: catalogFilterParts) {
+					this.createDatabase(catFilter.trim());
+					getSchemas(catFilter.trim());					
+				}
+			}
 		} catch (SQLException e) {
-			// TODO Auto-generated catch block
 			e.printStackTrace();
 		}
 	}
@@ -304,7 +313,7 @@ public class GenericScanner implements IJdbcScanner {
 			return true;
 		}
 		// split the catalog filter by , 
-		String[] catalogs = catalogFilter.split(",");
+		String[] catalogs =  catalogFilter.split(",");
 //		System.out.println("filter conditions for catalog " + catalogs);
 		for (String catFilter: catalogs) {
 //			System.out.println("does " + catFilter + "=" + catalogName + " " + catFilter.equalsIgnoreCase(catalogName));
@@ -405,7 +414,6 @@ public class GenericScanner implements IJdbcScanner {
 			
 
 		} catch (SQLException e) {
-			// TODO Auto-generated catch block
 			e.printStackTrace();
 		}
 
@@ -439,7 +447,6 @@ public class GenericScanner implements IJdbcScanner {
 			System.out.println("\tViews extracted: " + viewCount);
 
 		} catch (SQLException e) {
-			// TODO Auto-generated catch block
 			e.printStackTrace();
 		}
 
@@ -558,7 +565,6 @@ public class GenericScanner implements IJdbcScanner {
 
 		} catch (IOException e1) { 
 			initialized=false;
-			// TODO Auto-generated catch block 
 			e1.printStackTrace(); 
 		} 
 
@@ -581,7 +587,6 @@ public class GenericScanner implements IJdbcScanner {
 			viewColumnWriter.close(); 
 			linksWriter.close();
 		} catch (IOException e) { 
-			// TODO Auto-generated catch block 
 			e.printStackTrace(); 
 			return false;
 		} 
@@ -619,10 +624,8 @@ public class GenericScanner implements IJdbcScanner {
 	        zipOut.close();
 	        fos.close();
 		} catch (FileNotFoundException e) {
-			// TODO Auto-generated catch block
 			e.printStackTrace();
 		} catch (IOException e) {
-			// TODO Auto-generated catch block
 			e.printStackTrace();
 		}
 
