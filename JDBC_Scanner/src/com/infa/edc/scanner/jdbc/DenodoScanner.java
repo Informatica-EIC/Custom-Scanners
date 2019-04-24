@@ -19,7 +19,7 @@ import java.util.Set;
 import com.opencsv.CSVWriter;
 
 public class DenodoScanner extends GenericScanner {
-	public static final String version="0.9.2";
+	public static final String version="0.9.3";
 
 	protected String databaseName="";
 	
@@ -153,7 +153,6 @@ public class DenodoScanner extends GenericScanner {
 
 		    }
 		} catch (SQLException e) {
-			// TODO Auto-generated catch block
 			e.printStackTrace();
 		}
 
@@ -199,7 +198,6 @@ public class DenodoScanner extends GenericScanner {
 			System.out.println("\tTables extracted: " + tableCount);
 
 		} catch (SQLException e) {
-			// TODO Auto-generated catch block
 			e.printStackTrace();
 		}
 
@@ -231,7 +229,6 @@ public class DenodoScanner extends GenericScanner {
 			}
 			
 		} catch (SQLException e) {
-			// TODO Auto-generated catch block
 			e.printStackTrace();
 		}
 		
@@ -310,7 +307,6 @@ public class DenodoScanner extends GenericScanner {
 						///}
 					}
 				} catch (SQLException e) {
-					// TODO Auto-generated catch block
 					e.printStackTrace();
 				}
 
@@ -330,7 +326,6 @@ public class DenodoScanner extends GenericScanner {
 			// collect for later 0 tge 
 
 		} catch (SQLException e) {
-			// TODO Auto-generated catch block
 			e.printStackTrace();
 		}
 
@@ -436,21 +431,21 @@ public class DenodoScanner extends GenericScanner {
 		System.out.println("\t\tview lineage extraction - using view_dependencies stored procedure for: " + dbName + "/" + viewName);
 		String query="select * " + 
 				"from   view_dependencies (?, ?)  " + 
-				"where depth=1 and view_type != 'Base View' " + 
-				"order by input_view_database_name, input_view_name, view_identifier desc"
+				"where depth=1 and view_type != 'Base View' " //+ 
+				//"order by input_view_database_name, input_view_name, view_identifier desc"
 				;
 		
 //		System.out.println("structs scanned..." + datasetsScanned.size());
 //		System.out.println(datasetsScanned);
 		
-        int recCount=0;		
+//        int recCount=0;		
         try {
     		PreparedStatement deps = connection.prepareStatement(query);
     		deps.setString(1, dbName);
 			deps.setString(2, viewName);
 	        ResultSet rsDeps = deps.executeQuery();
 		    while(rsDeps.next()) {
-		    	recCount++;
+//		    	recCount++;
 		    	String inViewName = rsDeps.getString("input_view_name");
 		    	String returnedviewName = rsDeps.getString("view_name");
 		    	String privateView = rsDeps.getString("private_view");
@@ -468,21 +463,25 @@ public class DenodoScanner extends GenericScanner {
 		    		// case 1
 		    		String objKey = fromDB + "/" + fromTab;
 		    		if (datasetsScanned.contains(objKey)) {
-//		    			System.out.println("\t\t\tok - direct link found...." + objKey);
+//		    			System.out.println("\t\t\t OK - direct link found...." + objKey);
 				    	String lefttabId = databaseName + "/" + fromDB + "/" +fromTab;
 				    	String righttabId = databaseName + "/" + dbName + "/" +viewName;
 			    		linksWriter.writeNext(new String[] {"core.DataSetDataFlow",lefttabId,righttabId});	
 //			    		System.out.println("\t\t\twriting table level lineage: " +  lefttabId + " ==>> " + righttabId);
 			    		totalTableLineage++;
 		    		} else {
-//		    			System.out.println("\t\t\tprobaby a link to a virtual table XXX" + objKey);	
+		    			// 
+		    			//System.out.println("\t\t\t probably a link to a virtual table" + objKey);	
 		    			// add to (verbose) logging (to be implemented)
 		    		}
 		    	} 
 		    }
 		} catch (SQLException e) {
-			// TODO Auto-generated catch block
+			System.out.println("sql Exception: " + e.getMessage());
 			e.printStackTrace();
+		} catch (Exception ex) {
+			System.out.println("unknown exception found " + ex.getMessage());
+			ex.printStackTrace();
 		}
  
 	}
@@ -510,7 +509,7 @@ public class DenodoScanner extends GenericScanner {
 //		System.out.println("elements scanned..." + elementsScanned.size());
 //		System.out.println(elementsScanned);
 		
-        int recCount=0;		
+//        int recCount=0;		
         try {
     		PreparedStatement deps = connection.prepareStatement(query);
     		deps.setString(1, dbName);
@@ -518,9 +517,9 @@ public class DenodoScanner extends GenericScanner {
 			deps.setString(3, columnName);
 	        ResultSet rsDeps = deps.executeQuery();
 		    while(rsDeps.next()) {
-		    	recCount++;
+//		    	recCount++;
 		    	String inViewName = rsDeps.getString("input_view_name");
-		    	String toColName = rsDeps.getString("column_name");
+//		    	String toColName = rsDeps.getString("column_name");
 		    	String returnedviewName = rsDeps.getString("view_name");
 		    	String privateView = rsDeps.getString("private_view");
 //		    	String fromDB = rsDeps.getString("view_database_name");
@@ -565,87 +564,20 @@ public class DenodoScanner extends GenericScanner {
 		    				}
 		    				// end - is an expression reference
 		    			}  else {
-//		    				System.out.println("\t\t\tprobably a link to a virtual table column XXX" + objKey);	
+//		    				System.out.println("\t\t\tprobably a link to a virtual table column " + objKey);	
 		    			}
 		    		}
 		    	} 
 		    }
 		} catch (SQLException e) {
-			// TODO Auto-generated catch block
 			e.printStackTrace();
+		} catch (Exception ex) {
+			System.out.println("unknown exception found " + ex.getMessage());
+			ex.printStackTrace();
 		}
  
 	}	
 	
-	/**
-	 * read the private view column dependencies and store in a memory model
-	 * for lookup later
-	 * @param dbname
-	 * @param viewName
-	 */
-	
-	/**
-	protected void extractPrivateViewDeps(String dbname, String viewName) {
-//		System.out.println("pre processoor for :-" + dbname + "__" + viewName);
-		String query="select distinct * " + 
-				"from  COLUMN_DEPENDENCIES (?, ?, null)  " + 
-				"where depth=1 and input_view_name=? " + 
-				"and private_view='true' " + 
-				"order by input_view_name, dependency_identifier";
-        try {
-    		PreparedStatement deps = connection.prepareStatement(query);
-			deps.setString(1, dbname);
-	        deps.setString(2, viewName);
-	        deps.setString(3, viewName);
-
-	        ResultSet rsDeps = deps.executeQuery();
-	        int recCount=0;
-		    while(rsDeps.next()) {
-		    	recCount++;
-		    	String fromDB = rsDeps.getString("dependency_database_name");
-		    	String fromTab = rsDeps.getString("dependency_name");
-		    	String fromCol = rsDeps.getString("dependency_column_name");
-		    	String toCol = rsDeps.getString("column_name");
-		    	String expression = rsDeps.getString("expression");
-		    	String private_view = rsDeps.getString("private_view");
-		    	String view_name = rsDeps.getString("view_name");
-		    	
-		    	String toKey = view_name + "/" + toCol;
-		    	String fromKey = fromTab + "/" + fromCol;
-		    	
-//		    	System.out.println("\nfrom " + fromKey);
-//		    	System.out.println("to   " + toKey);
-		    	
-		    	if (privateDepsMap.containsKey(toKey)) {
-//		    		System.out.println("duplicte????? rec-" + recCount + " toKey="  + toKey + " fromKey=" + fromKey);
-		    	} else {
-		    		privateDepsMap.put(toKey, fromKey);
-		    	}
-		    	
-		    }
-	        System.out.println("records processed: " + recCount + " maps created:=" + privateDepsMap.size());
-		} catch (SQLException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-		}
-
-        System.out.println("privateDepsMap..." + privateDepsMap);
-		
-	}	
-	
-	protected String getActualLineageForInternalObject(String aKey) {
-		String ret = "";
-		ret = aKey;
-//		System.out.println("checking from key=" + aKey);
-		while (privateDepsMap.containsKey(ret)) {
-			ret = privateDepsMap.get(ret);
-//			System.out.println("\tret=" + ret);
-		}
-		
-//		System.out.println("returning: " + ret);
-		return ret;
-	}
-	*/
 	
 	/**
 	 * extra processing can call some dbms specific functions
@@ -658,9 +590,9 @@ public class DenodoScanner extends GenericScanner {
 		
 		
 		// unique list of dataflows...
-		Set datasetFlows = new HashSet();
+//		Set datasetFlows = new HashSet();
 		
-		PreparedStatement deps = null;
+//		PreparedStatement deps = null;
 //		String dependenciesQuery = "select input_view_database_name, input_view_name, " +
 //				"view_name, column_name, dependency_database_name, dependency_name, " +
 //				"dependency_column_name, expression, depth " + 
@@ -669,11 +601,11 @@ public class DenodoScanner extends GenericScanner {
 //				"order by input_view_name, view_name, column_name, depth;";
 		
 		// if private_view='true' and depencency_type='Base View' - we have the last element
-		String dependenciesQuery = "select * " +
-				"from  COLUMN_DEPENDENCIES (?, ?, null)  " + 
-				"where depth=1 and input_view_name=?  " + 
-				"and private_view='false' " + 
-				"order by input_view_name, view_name, column_name, depth;";
+//		String dependenciesQuery = "select * " +
+//				"from  COLUMN_DEPENDENCIES (?, ?, null)  " + 
+//				"where depth=1 and input_view_name=?  " + 
+//				"and private_view='false' " + 
+//				"order by input_view_name, view_name, column_name, depth;";
 		
 		// for each schema - then view...
 		for (String schema : viewDbNameMap.keySet()) {
@@ -688,98 +620,6 @@ public class DenodoScanner extends GenericScanner {
 					this.extractViewColumnLevelLineage(schema, view, col);
 		    		
 		    	}
-
-				/**
-				
-				try {
-
-					this.extractPrivateViewDeps(schema, view);
-					
-			        deps = connection.prepareStatement(dependenciesQuery);
-			        deps.setString(1, schema);
-			        deps.setString(2, view);
-			        deps.setString(3, view);
-
-			        ResultSet rsDeps = deps.executeQuery();
-			        
-//			        System.out.println("\t\tquery executed to get dependencies using COLUMN_DEPENDENCIES() call");
-			        int tabLvlLineageCount=0;
-			        int colLvlLineageCount=0;
-			        int privateDeps=0;
-				    while(rsDeps.next()) {
-				    	String fromDB = rsDeps.getString("dependency_database_name");
-				    	String fromTab = rsDeps.getString("dependency_name");
-				    	String fromCol = rsDeps.getString("dependency_column_name");
-				    	String toCol = rsDeps.getString("column_name");
-				    	String expression = rsDeps.getString("expression");
-				    	String private_view = rsDeps.getString("private_view");
-				    	String viewName = rsDeps.getString("view_name");
-				    	String viewType = rsDeps.getString("view_type");
-				    	
-				    	
-				    	if (viewType.equals("Base View")) {
-//				    		System.out.println("skipping internal lineage for base view - processed later..." + viewName + " <> " + fromTab + " fc=" + fromCol);
-//				    		privateDeps++;
-				    	} else {
-//					    	String lefttabId = databaseName + "/" + fromDB + "/" +fromTab;
-//					    	String righttabId = databaseName + "/" + schema + "/" +view;
-					    	String leftId = databaseName + "/" + fromDB + "/" +fromTab + "/" + fromCol;
-					    	String rightId = databaseName + "/" + schema + "/" +view + "/" + toCol;
-
-					    	if (expression==null) {
-					    		// check if the dependency is an internal one...
-					    		String fromKey = fromTab + "/" + fromCol;
-//					    		System.out.println("checking " + fromKey + " " + privateDepsMap.containsKey(fromKey));
-					    		if (privateDepsMap.containsKey(fromKey)) {
-					    			// get the actual lineage colum upstream
-					    			String retStr = this.getActualLineageForInternalObject(fromKey);
-					    			leftId = databaseName + "/" + fromDB + "/" + retStr;
-	//								linksWriter.writeNext(new String[] {"!!indirect!!core.DirectionalDataFlow",leftId,rightId});
-									linksWriter.writeNext(new String[] {"core.DirectionalDataFlow",leftId,rightId});
-									// @TODO: table level lineage here too	
-					    		} else {
-									linksWriter.writeNext(new String[] {"core.DirectionalDataFlow",leftId,rightId});
-									colLvlLineageCount++;
-					    		}
-					    	} else {
-					    		// expression special processing 
-					    		System.out.println("Expression===" + expression + " from:" + fromCol + " private?=" +private_view);
-					    		String[] exprParts = fromCol.split(",");
-					    		
-					    		//@todo refactor here - too much copy/paste of code
-					    		for (String exprPart: exprParts) {
-					    			System.out.println("\t\t\tlinking ...." + exprPart);
-					    			leftId = databaseName + "/" + fromDB + "/" +viewName + "/" + exprPart;
-					    			rightId = databaseName + "/" + schema + "/" +view + "/" + toCol;
-					    			
-					    			String fromKey = fromTab + "/" + exprPart;
-//					    			System.out.println(" key found " + fromTab + " ??? " + privateDepsMap.containsKey(fromTab + "/" + exprPart));
-//					    			System.out.println(" key returned " + fromTab + " ??? " + this.getActualLineageForInternalObject(fromTab + "/" + exprPart));
-						    		if (privateDepsMap.containsKey(fromKey)) {
-						    			// get the actual lineage colum upstream
-						    			String retStr = this.getActualLineageForInternalObject(fromKey);
-						    			leftId = databaseName + "/" + fromDB + "/" + retStr;
-		//								linksWriter.writeNext(new String[] {"!!indirect!!core.DirectionalDataFlow",leftId,rightId});
-										linksWriter.writeNext(new String[] {"core.DirectionalDataFlow",leftId,rightId});
-										// @TODO: table level lineage here too	
-						    		} else {
-//									linksWriter.writeNext(new String[] {"EXPR.core.DirectionalDataFlow",leftId,rightId});
-						    			linksWriter.writeNext(new String[] {"core.DirectionalDataFlow",leftId,rightId});
-						    		}
-					    		}
-					    		expressionsProcessed++;
-					    	}
-				    	}
-				    }
-
-			        
-			        rsDeps.close();
-			        
-			        System.out.println("\t\t\t" + "viewLineageLinks=" + tabLvlLineageCount + " columnLineage=" + colLvlLineageCount + " private dependencies:" + privateDeps);
-			    } catch (SQLException e ) {
-			        e.printStackTrace();
-			    }
-			        **/
 				
 			} // each view
 		}
@@ -815,7 +655,7 @@ public class DenodoScanner extends GenericScanner {
 				    		fromSchema=fromCatalog;
 				    	}
 				    	String fromTab = rsDeps.getString("source_table_name");
-				    	String fromSQL = rsDeps.getString("sqlsentence");
+//				    	String fromSQL = rsDeps.getString("sqlsentence");
 				    	String viewWrapperName = rsDeps.getString("view_wrapper_name");
 				    	System.out.println("\t\t\t\tview wrapper=" + viewWrapperName);
 				    	String connectionName = getConnectionNameFromWrapper(schema, viewWrapperName);
@@ -855,23 +695,6 @@ public class DenodoScanner extends GenericScanner {
 				
 			} // each table
 		}
-		
-		/**
-		System.out.println("getting datasources JDBC:");
-		try {
-			Statement stJDBC = connection.createStatement(); 
-			ResultSet rsJDBC = stJDBC.executeQuery("LIST DATASOURCES JDBC");
-		    while(rsJDBC.next()) {
-		    	String jdbcConnection = rsJDBC.getString("name");
-		    	System.out.println("jdbc connection = " + jdbcConnection);
-		    }
-
-		} catch (SQLException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-		}
-		*/
-
 
 		
 		return;
@@ -889,12 +712,12 @@ public class DenodoScanner extends GenericScanner {
 
 		// execute DESC VQL WRAPPER JDBC <db>.<wrapper>;
 		String query="DESC VQL WRAPPER JDBC " + database + "." + wrapper;
-		PreparedStatement wrapperStmnt = null;
+//		PreparedStatement wrapperStmnt = null;
 //		String wrapperQuery = "DESC VQL WRAPPER JDBC ";
 
         try {
 			Statement st = connection.createStatement(); 
-			ResultSet rs = st.executeQuery("DESC VQL WRAPPER JDBC " + database + "." + wrapper);
+			ResultSet rs = st.executeQuery(query);
 			while (rs.next()) {
 //				System.out.println("\t\twrapper.....");
 				String result = rs.getString("result");
@@ -910,7 +733,6 @@ public class DenodoScanner extends GenericScanner {
 				}
 			}
 		} catch (SQLException e) {
-			// TODO Auto-generated catch block
 			e.printStackTrace();
 		}
 		
@@ -941,7 +763,6 @@ public class DenodoScanner extends GenericScanner {
 
 		} catch (IOException e1) { 
 			initialized=false;
-			// TODO Auto-generated catch block 
 			e1.printStackTrace(); 
 		} 
 
@@ -958,7 +779,6 @@ public class DenodoScanner extends GenericScanner {
 		try { 
 			custLineageWriter.close(); 
 		} catch (IOException e) { 
-			// TODO Auto-generated catch block 
 			e.printStackTrace(); 
 			return false;
 		} 
