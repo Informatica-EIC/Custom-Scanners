@@ -1,0 +1,20 @@
+<!-- attribute template, for copy/paste into your custom model
+     inside of the  <attributes></attributes> element -->
+
+      <attribute>
+         <name>Expression</name>
+         <label>Expression</label>
+         <dataType>core.String</dataType>
+         <searchable>true</searchable>
+         <facetable>false</facetable>
+         <boost>LOW</boost>
+         <description />
+         <multivalued>false</multivalued>
+         <suggestable>false</suggestable>
+         <sortable>false</sortable>
+         <visible>true</visible>
+         <deprecated>false</deprecated>
+         <derived>false</derived>
+         <fuzzy>false</fuzzy>
+         <data>false</data>
+      </attribute>
