@@ -1,0 +1,35 @@
+ <!-- parent/child association -->
+        <association>
+            <name>[relationship_id]</name>
+            <fromClass>[package].[from_class_name]</fromClass>
+            <toClass>[package].[to_class_name]</toClass>
+            <fromLabel>Contained-in</fromLabel>
+            <toLabel>Contains</toLabel>
+            <associationKinds>
+                <associationKind>core.ParentChild</associationKind>
+            </associationKinds>
+            <deprecated>false</deprecated>
+            <unidirectional>false</unidirectional>
+        </association>
+        
+<!-- lineage association (only required when specific named relationships are needed) -->
+        <!--
+        Note:  you do not need to model a lineage association. you can directly use the follwowing:-
+            core.DataSourceDataFlow     - for classes derived from core.DataSource)
+            core.DataSetDataFlow        - for classes derived from core.DataSet - table level lineage
+            core.DirectionalDataFlow    - for classes derived from core.DataElement - column level lineage
+
+            if you want to use specific realationships - core.DataFlow can be used
+        -->
+	  <association>
+         <name>[assocation id]</name>
+         <fromClass>[package].[fromClassName]</fromClass>
+         <toClass>[package].[toClassName]</toClass>
+         <fromLabel>[from label]</fromLabel>
+         <toLabel>[to label]</toLabel>
+         <associationKinds>
+            <associationKind>core.DataFlow</associationKind>
+         </associationKinds>
+         <deprecated>false</deprecated>
+         <unidirectional>false</unidirectional>
+      </association>      

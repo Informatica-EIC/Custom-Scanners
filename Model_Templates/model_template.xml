@@ -1,0 +1,28 @@
+<Package>
+    <!-- [package] formatted like java packages:  com.infa.edc.custom.<model> -->
+    <packageName>{package]</packageName>
+    <packageLabel>[package label]</packageLabel>
+    <packageDescription>[description]</packageDescription>
+    <!-- note:  when you need to change the model & import into the catalog - increment the version here -->
+    <version>1</version>
+    <requiredPackages>
+        <requiredPackage>
+            <packageName>core</packageName>
+            <version>1</version>
+        </requiredPackage>
+    </requiredPackages>
+    <referenceDatatypes />
+    <referenceAttributes />
+    <classes>
+        <!-- add your classes here -->
+    </classes>
+    <attributes>
+        <!-- add your attributes here., set searchable/facetable as needed -->	  
+    </attributes>
+    <associations>
+        <!-- parent/child relationship -->
+    </associations>
+    <associationKinds />
+    <dataTypes />
+    <classAttributes />
+</Package>
