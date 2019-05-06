@@ -1,0 +1,40 @@
+ <!-- copy any of these class template into your model, inside of the <classes></classes> element -->
+
+      <!-- datasource class template:  for parent/container objects (like schemas/folders etc) -->
+      <class>
+         <name>[datasource_template]</name>
+         <label>[datasource label]</label>
+         <description />
+         <isFirstClass>true</isFirstClass>
+         <boost>LOW</boost>
+         <superClasses>
+         	<superClass>core.DataSource</superClass>
+         </superClasses>
+         <deprecated>false</deprecated>
+      </class>
+
+      <!-- DataSet class template:  for structure objects like tables/files -->
+      <class>
+         <name>[dataset_classname]</name>
+         <label>[dataset label]</label>
+         <description />
+         <isFirstClass>true</isFirstClass>
+         <boost>LOW</boost>
+         <superClasses>
+         	<superClass>core.DataSet</superClass>
+         </superClasses>
+         <deprecated>false</deprecated>
+      </class>
+
+      <!-- DataElement class template:  for feature/colmn objects (fields/columns etc)  -->
+      <class>
+         <name>[dataelement_classname]</name>
+         <label>[element label]</label>
+         <description />
+         <isFirstClass>true</isFirstClass>
+         <boost>LOW</boost>
+         <superClasses>
+         	<superClass>core.DataElement</superClass>
+         </superClasses>
+         <deprecated>false</deprecated>
+      </class>
