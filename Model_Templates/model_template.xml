@@ -1,6 +1,6 @@
 <Package>
     <!-- [package] formatted like java packages:  com.infa.edc.custom.<model> -->
-    <packageName>{package]</packageName>
+    <packageName>[package]</packageName>
     <packageLabel>[package label]</packageLabel>
     <packageDescription>[description]</packageDescription>
     <!-- note:  when you need to change the model & import into the catalog - increment the version here -->
