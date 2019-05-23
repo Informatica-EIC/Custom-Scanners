@@ -80,7 +80,7 @@ Create a resource to load the metadata
 ```
 AthenaScanner: athena.properties currentTimeMillis=1544461478757
 AthenaScanner 0.1 initializing properties from: athena.properties
-password set to <prompt> for user AKIAINKSMW4ORPKKUTHA - waiting for user input...
+password set to <prompt> for user *************** - waiting for user input...
 User password:
    jdbc driver=com.simba.athena.jdbc.Driver
       jdbc url=jdbc:awsathena://AwsRegion=us-west-2;S3OutputLocation=s3://aws-athena-query-results-595425154981-us-west-2
