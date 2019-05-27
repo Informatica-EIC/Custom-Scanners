@@ -1,0 +1,4 @@
+"class","identity","core.name","com.infa.ldm.relational.StoreType","com.infa.ldm.relational.SystemType"
+"com.infa.ldm.relational.Database","denodo_vdp","denodo_vdp","Relational","Virtual DataPort"
+"com.infa.ldm.relational.Schema","denodo_vdp/policy_asset","policy_asset","",""
+"com.infa.ldm.relational.Schema","denodo_vdp/sakila_vdb","sakila_vdb","",""

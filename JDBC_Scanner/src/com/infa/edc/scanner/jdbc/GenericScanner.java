@@ -112,7 +112,7 @@ public class GenericScanner implements IJdbcScanner {
 	 * read the property file to get db connection settings
 	 */
 	public GenericScanner(String propertyFile) {
-		System.out.println(this.getClass().getSimpleName() + " " + version +  " initializing properties from: " + propertyFile);
+		System.out.println("GenericScanner" + " " + version +  " initializing properties from: " + propertyFile);
 
 		// store the property file
 		propertyFileName = propertyFile;
