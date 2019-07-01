@@ -1,1 +1,4 @@
 /bin/
+/denodo_custom_metadata_out/
+/denodo_custom_metadata_out_lineage/
+./denodo_custom_metadata_out/
