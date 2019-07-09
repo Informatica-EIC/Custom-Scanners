@@ -1,0 +1,34 @@
+Version History/Changes for Denodo Scanner
+------------------------------------------
+
+2019/07/08 - v0.9.6
+- re-factored view lineage processing column level
+	- previous versions processed each column individually, 
+	  for some larger databases that hava a lot of joins, these 
+	  querys could take up to 4 seconds for each column
+	- by re-factoring, we can get the same result by extracting 
+	  lineage for all columns in a view (vs 1 at a time).  
+	  For a large database, this reduced the scan time from 1h:20 to 9 mins
+	- console output is more compact
+- re-factored view lineage processing view level
+	- older versions created some wrong links for interface views 
+	  (links to the objects linked from the source of the interface)
+- fixed Issues(github)
+  https://github.com/Informatica-EIC/Custom-Scanners/issues
+	- #8  - denodo: tables/views with $ character in the name fail for jdbc getColumns
+	- #9  - denodo: tables with mixed case names - extract wrapper fails
+	- #10 - denodo: GET_SOURCE_TABLE [STORED_PROCEDURE] [ERROR] for non jdbc wrappers
+	- #12 - denodo: scanner raises errors when databases have mixed case names
+	
+- known issues / enhancements requested
+	- #13 - denodo: custom lineage for flatfiles is not generated
+			for delimited files, we should be able to generate lineage 
+			all other datasource types (Except for JDBC) will not have any 
+			custom lineage generated
+			for any non-supported datasource types - you will see a message in the 
+			scanner console/log
+				wrapper type:{type} not yet supported
+				
+			
+	
+	

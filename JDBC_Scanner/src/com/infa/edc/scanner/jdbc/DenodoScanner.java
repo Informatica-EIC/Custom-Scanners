@@ -17,11 +17,24 @@ import java.util.Map;
 import java.util.Properties;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
+import java.sql.Connection;
 
 import com.opencsv.CSVWriter;
 
 public class DenodoScanner extends GenericScanner {
-	public static final String version="0.9.5 refactored";
+	public static final String version="0.9.6";
+	
+	protected static String DISCLAIMER="\n************************************ Disclaimer *************************************\n"
+			 + "By using the Denodo scanner, you are agreeing to the following:-\n"
+			 + "- this custom scanner is not officially supported by Informatica\n"
+			 + "  it is a work in progress based on use-cases/examples we have seen so far\n"
+			 + "- there are some limitations for external linking/lineage for non-relational data sources.\n"
+			 + "  external references (Custom Lineage) is only generated for JDBC sources in the current version\n"
+			 + "- Issues can be created on githib:- \n"
+			 + "  https://github.com/Informatica-EIC/Custom-Scanners  (JDBC_Scanner folder)\n"
+			 + "*************************************************************************************\n"
+			 + "\n";
+
 
 	protected String databaseName=""; 
 	
@@ -227,12 +240,11 @@ public class DenodoScanner extends GenericScanner {
 
 
 				// System.out.println("found one...");
-				System.out.println("\t" + " catalog=" + rsTables.getString("TABLE_CAT") //+ " schema="
+				System.out.print("\t\t" + rsTables.getString("TABLE_CAT") //+ " schema="
 						//+ rsTables.getString("TABLE_SCHEM") 
-						+ " tablename=" + rsTables.getString("TABLE_NAME")
-						+ " TABLE_TYPE=" + rsTables.getString("TABLE_TYPE")
+						+ "." + rsTables.getString("TABLE_NAME")
 //						+ " comments=" + rsTables.getClob("REMARKS") 
-						+ " wrapper type=" + wrapperType
+						+ " wrapperType=" + wrapperType
 						);
 				if (doDebug && debugWriter !=null) {
 					debugWriter.println("getTables\t" + " catalog=" + rsTables.getString("TABLE_CAT") + " schema="
@@ -249,7 +261,7 @@ public class DenodoScanner extends GenericScanner {
 				this.getColumnsForTable(catalogName, schemaName, rsTables.getString("TABLE_NAME"), false);
 			}
 			System.out.println("\tTables extracted: " + tableCount);
-			System.out.println(this.tableWrapperTypes);
+//			System.out.println(this.tableWrapperTypes);
 
 		} catch (SQLException e) {
 			e.printStackTrace();
@@ -359,7 +371,7 @@ public class DenodoScanner extends GenericScanner {
 
 
 				// System.out.println("found one...");
-				System.out.println("\t" + " catalog=" + rsViews.getString("database_name")  + " viewname=" + viewName
+				System.out.print("\t\t" + rsViews.getString("database_name")  + "." + viewName
 						+ " TABLE_TYPE=" + rsViews.getString("view_type")
 //						+ " comments=" + rsViews.getString("description")
 						);
@@ -457,6 +469,7 @@ public class DenodoScanner extends GenericScanner {
 			debugWriter.flush();
 		}
     	int colCount=0;
+    	int exprCount=0;
     	try {
     		// Note:  alternate select * from get_view_columns ('policy_asset', 'policy_asset'); - where order will be correct (derive pos)
     		// Note:  if any denodo objects have a $ in the name, the standard JDBC getColumns call will return no rows
@@ -494,7 +507,8 @@ public class DenodoScanner extends GenericScanner {
                 String colKey = schemaName + "/" + tableName + "/" + columnName;
                 String exprVal = columnExpressions.get(colKey);
                 if (exprVal != null) {
-                	System.out.println("\t\texpression found for field " + colKey + " " + exprVal);
+//                	System.out.println("\t\texpression found for field " + colKey + " " + exprVal);
+                	exprCount++;
                 }
                 
                 // store the list of columns - for linking later
@@ -542,7 +556,7 @@ public class DenodoScanner extends GenericScanner {
 				debugWriter.flush();
 			}
     	}
-	    System.out.println("\t\tcolumns extracted: " + colCount);
+	    System.out.println(" columns: " + colCount + " expressions:" + exprCount);
 	    if (colCount==0) {
 	    	System.out.println("why 0 cols??");
 	    }
@@ -597,22 +611,22 @@ public class DenodoScanner extends GenericScanner {
 //		System.out.println("structs scanned..." + datasetsScanned.size());
 //		System.out.println(datasetsScanned);
 		
-        int recCount=0;		
+//        int recCount=0;		
         try {
     		PreparedStatement deps = connection.prepareStatement(query);
     		deps.setString(1, dbName);
 			deps.setString(2, viewName);
 	        ResultSet rsDeps = deps.executeQuery();
 		    while(rsDeps.next()) {
-		    	recCount++;
-		    	boolean isDebug=false;
+//		    	recCount++;
+//		    	boolean isDebug=false;
 		    	String inViewName = rsDeps.getString("input_view_name");
 		    	String returnedviewName = rsDeps.getString("view_name");
 		    	String privateView = rsDeps.getString("private_view");
 //		    	String fromDB = rsDeps.getString("view_database_name");
 		    	String fromDB = rsDeps.getString("dependency_database_name");
 		    	String fromTab = rsDeps.getString("dependency_name");
-		    	String viewType = rsDeps.getString("view_type");
+//		    	String viewType = rsDeps.getString("view_type");
 //    			if (viewName.equalsIgnoreCase("pspstatus_Project_Summary") ) {
 //    				System.out.println("start debug for view lineage here... rec=" + recCount);
 //    				System.out.println("\ttest 1: " + inViewName.equals(returnedviewName) + " && " + privateView.equals("false") + " = " + ( inViewName.equals(returnedviewName) && privateView.equals("false") ));
@@ -634,6 +648,7 @@ public class DenodoScanner extends GenericScanner {
 //		    		}
 		    		// case 1
 		    		String objKey = fromDB + "/" + fromTab;
+		    		System.out.println("extractViewLevelLineage should link: " + objKey);
 		    		if (datasetsScanned.contains(objKey)) {
 //		    			System.out.println("\t\t\t OK - direct link found...." + objKey);
 				    	String lefttabId = databaseName + "/" + fromDB + "/" +fromTab;
@@ -676,6 +691,149 @@ public class DenodoScanner extends GenericScanner {
  
 	}
 	
+	protected void extractViewLevelLineageRefactored(String dbName, String viewName) {
+		if (doDebug && debugWriter !=null) {
+			debugWriter.println("entering extractViewLevelLineage(" +dbName+ ", " + viewName + ")" );
+			debugWriter.flush();
+		}
+
+		System.out.println("\t\tview lineage extraction - using view_dependencies stored procedure for: " + dbName + "/" + viewName);
+		String query="select * " + 
+				"from   view_dependencies (?, ?)  " + 
+				"where depth=1 and view_type != 'Base View' " //+ 
+				//"order by input_view_database_name, input_view_name, view_identifier desc"
+				;
+		if (doDebug && debugWriter !=null) {
+			debugWriter.println("extractViewLevelLineage\tpreparedStatement=" + query);
+			debugWriter.flush();
+		}
+		
+//		System.out.println("structs scanned..." + datasetsScanned.size());
+//		System.out.println(datasetsScanned);
+    	Map<String, List<String>> vcache = new HashMap<String, List<String>>();
+
+		
+//        int recCount=0;		
+        try {
+    		PreparedStatement deps = connection.prepareStatement(query);
+    		deps.setString(1, dbName);
+			deps.setString(2, viewName);
+	        ResultSet rsDeps = deps.executeQuery();
+		    while(rsDeps.next()) {
+//		    	recCount++;
+//		    	boolean isDebug=false;
+//		    	String inViewName = rsDeps.getString("input_view_name");
+		    	String viewDB = rsDeps.getString("view_database_name");
+		    	String returnedviewName = rsDeps.getString("view_name");
+		    	String privateView = rsDeps.getString("private_view");
+//		    	String fromDB = rsDeps.getString("view_database_name");
+		    	String fromDB = rsDeps.getString("dependency_database_name");
+		    	String fromTab = rsDeps.getString("dependency_name");
+//		    	String viewType = rsDeps.getString("view_type");
+		    	
+	    		String cachKey = viewDB + "//" + returnedviewName;
+	    		String cacheVal = fromDB + "//" + fromTab;
+	    		
+//	    		System.out.println("record: " + recCount);
+
+		    	// cache processing....
+		    	if (privateView.equals("true")) {
+		    		// cache the vale for lookup when non private views are processed
+		    		List<String> cachedVals;
+		    		if (vcache.containsKey(cachKey)) {
+		    			cachedVals = vcache.get(cachKey);
+		    		} else {
+		    			// new key
+		    			cachedVals = new ArrayList<String>();
+		    			vcache.put(cachKey, cachedVals);
+		    		}
+			    		
+		    		// add the val
+		    		if (! cachedVals.contains(cacheVal) ) {
+//			    		System.out.println("adding val to key=" + cachKey + " val=" + cacheVal);
+		    			cachedVals.add(cacheVal);
+		    		}
+			    		
+			    	// no need to process further (we stored the value in the cache
+			    	continue;
+		    	}
+
+		    	if (privateView.equals("false") && viewDB.equals(dbName) && viewName.equals(returnedviewName)) {
+		    		List<String> objectstoLink = new ArrayList<String>();
+//		    		System.out.println("lookup...." + recCount + " " + cachKey + " val=" + cacheVal);
+		    		if (vcache.containsKey(cacheVal)) {
+		    			// winner 
+//		    			System.out.println("\tlookup: " + cacheVal);
+//		    			System.out.println("\t\tret: " + vcache.get(cacheVal));
+		    			objectstoLink = getColumnsFromCache(vcache, fromDB + "//" + fromTab, new ArrayList<String>());
+//		    			System.out.println("\t\tresult?: " + objectstoLink.size() + " " + objectstoLink);
+
+		    		} else {
+//		    			System.out.println("\tdirect ref: " + cacheVal);
+		    			objectstoLink.add(cacheVal);
+		    		}
+		    		
+//	    			System.out.println("\tto be linked?: " + objectstoLink.size() + " " + objectstoLink);
+	    			
+	    			// link the referenced objects
+		    		for (String refdCol: objectstoLink) {
+		    			String[] values = refdCol.split("//");
+		    			if (values.length==2) {
+		    				String leftDB = values[0];
+		    				String leftVW = values[1];
+//		    				System.out.println("\tready to link: " + leftDB + "." + leftVW);
+		    				
+				    		String objKey = leftDB + "/" + leftVW;
+//				    		System.out.println("\t\t\textractViewLevelLineage should link: " + objKey);
+				    		if (datasetsScanned.contains(objKey)) {
+//				    			System.out.println("\t\t\t OK - direct link found...." + objKey);
+						    	String lefttabId = databaseName + "/" + leftDB + "/" +leftVW;
+						    	String righttabId = databaseName + "/" + dbName + "/" +viewName;
+					    		linksWriter.writeNext(new String[] {"core.DataSetDataFlow",lefttabId,righttabId});
+//					    		if (isDebug) {
+//					    			System.out.println("\t\t\twriting table refactored level lineage: " +  lefttabId + " ==>> " + righttabId);
+//					    			System.out.println("$$$");
+//					    		}
+					    		totalTableLineage++;
+				    		} else {
+				    			System.out.println("\t\textractViewLevelLineageRefactored lookup not found: " + objKey);
+				    			// log it???
+				    		}
+		    			}
+		    		}
+
+
+		    	}
+		    	
+		    	
+		    	
+
+		    }
+		} catch (SQLException e) {
+			System.out.println("sql Exception: " + e.getMessage());
+			e.printStackTrace();
+			if (doDebug && debugWriter !=null) {
+				debugWriter.println("extractViewLevelLineage - Exception" );
+				e.printStackTrace(debugWriter);
+				debugWriter.flush();
+			}
+		} catch (Exception ex) {
+			System.out.println("unknown exception found " + ex.getMessage());
+			ex.printStackTrace();
+			if (doDebug && debugWriter !=null) {
+				debugWriter.println("extractViewLevelLineage - Exception" );
+				ex.printStackTrace(debugWriter);
+				debugWriter.flush();
+			}
+		}
+
+        if (doDebug && debugWriter !=null) {
+			debugWriter.println("exiting extractViewLevelLineage(" +dbName+ ", " + viewName + ")" );
+			debugWriter.flush();
+		}
+ 
+	}
+
 	
 	/**
 	 * extact view column level lineage - internal to denodo
@@ -707,7 +865,7 @@ public class DenodoScanner extends GenericScanner {
 //		System.out.println("elements scanned..." + elementsScanned.size());
 //		System.out.println(elementsScanned);
 		
-        int recCount=0;		
+//        int recCount=0;		
         try {
     		PreparedStatement deps = connection.prepareStatement(query);
     		deps.setString(1, dbName);
@@ -715,7 +873,7 @@ public class DenodoScanner extends GenericScanner {
 			deps.setString(3, columnName);
 	        ResultSet rsDeps = deps.executeQuery();
 		    while(rsDeps.next()) {
-		    	recCount++;
+//		    	recCount++;
 		    	String inViewName = rsDeps.getString("input_view_name");
 //		    	String toColName = rsDeps.getString("column_name");
 		    	String returnedviewName = rsDeps.getString("view_name");
@@ -724,16 +882,7 @@ public class DenodoScanner extends GenericScanner {
 		    	String fromDB = rsDeps.getString("dependency_database_name");
 		    	String fromTab = rsDeps.getString("dependency_name");
 		    	String fromCol = rsDeps.getString("dependency_column_name");
-		    	String depType = rsDeps.getString("dependency_type");
-
-		    	boolean isDebug = false;
-    			if (viewName.equalsIgnoreCase("pspstatus_Project_Summary") && columnName.equalsIgnoreCase("Project health color name")) {
-    				System.out.println("start debug for single field expression reference here..." + recCount);
-    				System.out.println("test 1: " + inViewName.equals(returnedviewName) + " && " + privateView.equals("false") + " = " + ( inViewName.equals(returnedviewName) && privateView.equals("false") ));
-    				System.out.println("test 2: " + (! inViewName.equals(returnedviewName)) + " && " + privateView.equals("true") + " " + returnedviewName.startsWith("_" + inViewName.toLowerCase() + "_") + " = " + ( ! inViewName.equals(returnedviewName) && privateView.equals("true")  && returnedviewName.startsWith("_" + inViewName.toLowerCase() + "_") ) );
-    				isDebug = true;
-    			}
-
+//		    	String depType = rsDeps.getString("dependency_type");
 		    	
 		    	if (  	( inViewName.equals(returnedviewName) && privateView.equals("false") )
 		    			|
@@ -747,9 +896,6 @@ public class DenodoScanner extends GenericScanner {
 				    	String leftId = databaseName + "/" + fromDB + "/" +fromTab + "/" + fromCol;
 				    	String rightId = databaseName + "/" + dbName + "/" +viewName + "/" + columnName;
 			    		linksWriter.writeNext(new String[] {"core.DirectionalDataFlow",leftId,rightId});		    			
-			    		if (isDebug) {
-			    			System.out.println("\t\t\t\twriting column level lineage: " +  leftId + " ==>> " + rightId);
-			    		}
 			    		totalColumnLineage++;
 		    		} else {
 		    			// it could be a virtual column (for a join etc, or an expression field)
@@ -803,14 +949,16 @@ public class DenodoScanner extends GenericScanner {
 		}
 	}	
 	
+	/** - not used
 	private String getMappedViewNameFromMap(String from, Map<String,String> theMap) {
-//		String actual = "";
+		//		String actual = "";
 		while (theMap.containsKey(from)) {
-//			System.out.println("lookup: " + from);
+			//			System.out.println("lookup: " + from);
 			from = theMap.get(from);
 		}
 		return from;
 	}
+	*/
 	
 	static int ldepth=0;
 	
@@ -823,13 +971,7 @@ public class DenodoScanner extends GenericScanner {
 	 */
 	protected List<String> getColumnsFromCache( Map<String, List<String>> theCache, String theKey, ArrayList<String> theListToReturn) {
 		ldepth++;
-		
-//		if (theKey.equals("FoF//_sv_pace_incidenttask__sv_pace_incidenttask__sv_pace_incidenttask__sv_pace_incidenttask___5684426257//Notes,DisplayName")) {
-//			System.out.println("lookup debug....");
-//		}
-//		 List<String> returnedList = new ArrayList<String>();
-		 int iterations = 0;
-		 
+				 
 //		 System.out.println("getColumnsFromCache key=" + theKey + " key found=" + theCache.containsKey(theKey) + " depth=" + ldepth);
 		 
 		 if (theCache.containsKey(theKey)) {
@@ -891,7 +1033,7 @@ public class DenodoScanner extends GenericScanner {
     	boolean lastLinkedActual = false;
     	
 		
-        int recCount=0;		
+//        int recCount=0;		
         try {
     		PreparedStatement deps = connection.prepareStatement(query);
     		deps.setString(1, dbName);
@@ -899,7 +1041,7 @@ public class DenodoScanner extends GenericScanner {
 			deps.setString(3, null);
 	        ResultSet rsDeps = deps.executeQuery();
 		    while(rsDeps.next()) {
-		    	recCount++;
+//		    	recCount++;
 //		    	if (viewName.equals("etq_capa_CAPATiming") && recCount>=656) {
 
 //		    	String inViewName = rsDeps.getString("input_view_name");
@@ -911,7 +1053,7 @@ public class DenodoScanner extends GenericScanner {
 		    	String fromTab = rsDeps.getString("dependency_name");
 		    	String fromCol = rsDeps.getString("dependency_column_name");
 		    	String depType = rsDeps.getString("dependency_type");
-		    	String viewType = rsDeps.getString("view_type");
+//		    	String viewType = rsDeps.getString("view_type");
 		    	String expr = rsDeps.getString("expression");
 		    	
 //		    	System.out.println("row: " + recCount);
@@ -979,7 +1121,7 @@ public class DenodoScanner extends GenericScanner {
 		    	
 		    	// if it is a preDefined Stored procedure - need to create some new objects
 		    	if (depType.equals("Predefined Storedprocedure")) {
-		    		System.out.println("need to create object: " + " admin//" + fromTab + "//" + fromCol + " expression=" + expr);
+		    		System.out.println("\t\t\tprocedure object reference found (should be created/linked): " + " admin//" + fromTab + "//" + fromCol + " expression=" + expr);
 		    		// also change the db to admin in cacheval
 		    	}
 		    	
@@ -1029,7 +1171,6 @@ public class DenodoScanner extends GenericScanner {
 					    	}
 			    		} else {
 			    			if (sourceCl != null && sourceCl.contains(",")) {
-			    				System.out.println("ever get here???");
 			    				expressionsProcessed++;
 //			    				System.out.println("expr field...");
 			    				if (datasetsScanned.contains(sourceDB + "/" + sourceVw)) {
@@ -1043,7 +1184,7 @@ public class DenodoScanner extends GenericScanner {
 						    			String  leftId = databaseName + "/" +  sourceDB + "/" +sourceVw + "/" + exprPart;
 								    	String rightId = databaseName + "/" + tgtKey;
 							    		linksWriter.writeNext(new String[] {"core.DirectionalDataFlow",leftId,rightId});		    			
-							    		System.out.println("\t\t\t\twriting column level lineage from expr: " +  leftId + " ==>>> " + rightId);
+//							    		System.out.println("\t\t\t\twriting column level lineage from expr: " +  leftId + " ==>>> " + rightId);
 							    		totalColumnLineage++;
 						    		}
 
@@ -1107,11 +1248,11 @@ public class DenodoScanner extends GenericScanner {
 			// for each schema - then view...
 			for (String schema : viewDbNameMap.keySet()) {
 				System.out.println("\tschema=" + schema);
-		        long schStart = System.currentTimeMillis();
+//		        long schStart = System.currentTimeMillis();
 
 				for (String view : viewDbNameMap.get(schema)) {
-			        int numCols = 0;
-			        long vstart = System.currentTimeMillis();
+//			        int numCols = 0;
+//			        long vstart = System.currentTimeMillis();
 
 					System.out.println("\t\tview=" + view);
 					if (epSkipViews.contains(schema + "." + view)) {
@@ -1124,18 +1265,20 @@ public class DenodoScanner extends GenericScanner {
 					} else {
 				        long start = System.currentTimeMillis();
 				        // call the view level lineage extraction
-						this.extractViewLevelLineage(schema, view);	
+//						this.extractViewLevelLineage(schema, view);	
+						this.extractViewLevelLineageRefactored(schema, view);	
 						
 						this.extractViewColumnLevelLineageRefactored(schema, view);
 				        
 						long end1 = System.currentTimeMillis();		
 						long totalMillis = end1-start;
-						String timeTaken = 	String.format("%d min, %d sec", 
-							    TimeUnit.MILLISECONDS.toMinutes(totalMillis),
-							    TimeUnit.MILLISECONDS.toSeconds(totalMillis) - 
-							    TimeUnit.MINUTES.toSeconds(TimeUnit.MILLISECONDS.toMinutes(totalMillis))
-							);
-						System.out.println("extractViewLevelLineage() time: " + timeTaken);
+//						String timeTaken = 	String.format("%d min, %d sec", 
+//							    TimeUnit.MILLISECONDS.toMinutes(totalMillis),
+//							    TimeUnit.MILLISECONDS.toSeconds(totalMillis) - 
+//							    TimeUnit.MINUTES.toSeconds(TimeUnit.MILLISECONDS.toMinutes(totalMillis))
+//							);
+//						System.out.println("extractViewLevelLineage() time: " + timeTaken);
+						System.out.println("\t\textractViewLevelLineage() time: " + totalMillis + "ms");
 						/**
 				    	Map<String, List<String>> tableMap = colDbNameMap.get(schema);
 				    	// # BUG Axa XL - check for nulls here - we have a case where extract view lineage fails (still troubleshooting)
@@ -1176,24 +1319,9 @@ public class DenodoScanner extends GenericScanner {
 				    	}  // end of column level processing (each individual column for a view
 				    	*/
 					}
-					long vEnd = System.currentTimeMillis();
-					long totalMillis = vEnd-vstart;
-					String timeTaken = 	String.format("%02d min, %02d sec", 
-						    TimeUnit.MILLISECONDS.toMinutes(totalMillis),
-						    TimeUnit.MILLISECONDS.toSeconds(totalMillis) - 
-						    TimeUnit.MINUTES.toSeconds(TimeUnit.MILLISECONDS.toMinutes(totalMillis))
-						);
-					System.out.println("extractView/ColumnLevelLineage() single view time: "  + timeTaken + " cols:" + numCols + " " + schema + "." + view + " :");
 
 				} // each view
-				long schEnd = System.currentTimeMillis();
-				long totalMillis = schEnd-schStart;
-				String timeTaken = 	String.format("%d min, %d sec", 
-					    TimeUnit.MILLISECONDS.toMinutes(totalMillis),
-					    TimeUnit.MILLISECONDS.toSeconds(totalMillis) - 
-					    TimeUnit.MINUTES.toSeconds(TimeUnit.MILLISECONDS.toMinutes(totalMillis))
-					);
-				System.out.println("extractView/ColumnLevelLineage() time: " + timeTaken);
+
 			}
 		} catch (Exception ex) {
 			System.out.println("exception raised in first part of extra processing - " + ex.getMessage());
@@ -1232,7 +1360,7 @@ public class DenodoScanner extends GenericScanner {
 
 						// only process if the wrapper type is JDBC (skip for others)
 						String wrapperType = this.tableWrapperTypes.get(schema + "." + table);
-						System.out.println("\t" + schema + "." + table + "  wrapperType=" + wrapperType);
+						System.out.print("\t" + schema + "." + table + "  wrapperType=" + wrapperType);
 
 						
 						int custLineageCount=0;
@@ -1256,7 +1384,7 @@ public class DenodoScanner extends GenericScanner {
 							    	String fromTab = rsDeps.getString("source_table_name");
 			//				    	String fromSQL = rsDeps.getString("sqlsentence");
 							    	String viewWrapperName = rsDeps.getString("view_wrapper_name");
-							    	System.out.println("\t\t\t\tview wrapper=" + viewWrapperName);
+							    	System.out.println(" wrapper=" + viewWrapperName);
 							    	String connectionName = getConnectionNameFromWrapper(schema, viewWrapperName);
 			
 			//				    	System.out.println("\t\t\tsourced from: connectio= " + connectionName + " " + fromSchema + "." + fromTab + " sql=" + fromSQL);
@@ -1304,7 +1432,7 @@ public class DenodoScanner extends GenericScanner {
 						   // end of JDBC wrapper type
 						}  else {
 							// non jdbc - log it to the console
-							System.out.println("\twrapper type" + wrapperType + " not yet supported");						
+							System.out.println("\twrapper type:" + wrapperType + " not yet supported");						
 						}
 					}
 		
@@ -1520,9 +1648,12 @@ public class DenodoScanner extends GenericScanner {
 
 	}
 
-	
+	/**
+	 * flush all output files - for longer running processes
+	 * @return true if successful
+	 */
 	protected boolean flushFiles() {
-		System.out.println("flushing denodo specific files");
+//		System.out.println("flushing denodo specific files");
 
 		try { 
 			otherObjWriter.flush(); 
@@ -1548,5 +1679,14 @@ public class DenodoScanner extends GenericScanner {
 
 	}
 
+	
+	/**
+	 * for testing (outside/isolaged from the scanner
+	 * @param theConnection
+	 */
+	protected void setConnection(Connection theConnection) {
+		this.connection = theConnection;
+		
+	}
 
 }
