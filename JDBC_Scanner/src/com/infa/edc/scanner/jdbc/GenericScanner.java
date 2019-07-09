@@ -18,6 +18,7 @@ import java.sql.SQLException;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Properties;
+import java.util.concurrent.TimeUnit;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipOutputStream;
 
@@ -84,6 +85,14 @@ public class GenericScanner implements IJdbcScanner {
 	protected CSVWriter columnWriter = null; 
 	protected CSVWriter viewColumnWriter = null; 
 	protected CSVWriter linksWriter = null; 
+	
+	// object counters
+	protected int dbCount = 0;
+	protected int schCount = 0;
+	protected int tabCount = 0;
+	protected int colCount = 0;
+	protected int vwCount = 0;
+	protected int vwColCount = 0;
 
 
 	public static boolean showDisclaimer() {
@@ -209,6 +218,7 @@ public class GenericScanner implements IJdbcScanner {
 			return;
 		} else {
 			// we have a connection - continue...
+	        long start = System.currentTimeMillis();
 			initFiles();
 
 			System.out.println("\t" + this.getClass().getName() + " ready to start extracting databse metadata!");
@@ -239,16 +249,49 @@ public class GenericScanner implements IJdbcScanner {
 			}
 
 			getCatalogs();
-			
-			
+	        long end1 = System.currentTimeMillis();		
+			long totalMillis = end1-start;
+			String timeTaken = 	String.format("%d min, %d sec", 
+				    TimeUnit.MILLISECONDS.toMinutes(totalMillis),
+				    TimeUnit.MILLISECONDS.toSeconds(totalMillis) - 
+				    TimeUnit.MINUTES.toSeconds(TimeUnit.MILLISECONDS.toMinutes(totalMillis))
+				);
+			System.out.println("getCatalogs() time: " + timeTaken);
+ 
 			extraProcessing();
+	        long end2 = System.currentTimeMillis();		
+			totalMillis = end2-end1;
+			timeTaken = 	String.format("%d min, %d sec", 
+				    TimeUnit.MILLISECONDS.toMinutes(totalMillis),
+				    TimeUnit.MILLISECONDS.toSeconds(totalMillis) - 
+				    TimeUnit.MINUTES.toSeconds(TimeUnit.MILLISECONDS.toMinutes(totalMillis))
+				);
+			System.out.println("extraProcessing() time: " + timeTaken);
+			
+			
+			// object counts
+			System.out.println("object counts: ");
+			System.out.println("\tdatabases=" + dbCount);
+			System.out.println("\t  schemas=" + schCount);
+			System.out.println("\t   tables=" + tabCount);
+			System.out.println("\t  columns=" + colCount);
+			System.out.println("\t    views=" + vwCount);
+			System.out.println("\tview cols=" + vwColCount);
+			
 
-
-			// after all proccess are finished- close the csv files
+			// after all processes are finished- close the csv files
 			closeFiles();
+			totalMillis = end2-start;
+			timeTaken = 	String.format("%d min, %d sec", 
+				    TimeUnit.MILLISECONDS.toMinutes(totalMillis),
+				    TimeUnit.MILLISECONDS.toSeconds(totalMillis) - 
+				    TimeUnit.MINUTES.toSeconds(TimeUnit.MILLISECONDS.toMinutes(totalMillis))
+				);
+			System.out.println("scanner time: " + timeTaken);
 		}
 
 	}
+	
 
 	/**
 	 * iterate over all catalogs (databases) there may be multiple
@@ -464,11 +507,11 @@ public class GenericScanner implements IJdbcScanner {
 				//					                String datatype = columns.getString("DATA_TYPE");
 				String typeName = columns.getString("TYPE_NAME");
 				String columnsize = columns.getString("COLUMN_SIZE");
-				String decimaldigits = columns.getString("DECIMAL_DIGITS");
-				String isNullable = columns.getString("IS_NULLABLE");
+				// String decimaldigits = columns.getString("DECIMAL_DIGITS");
+				// String isNullable = columns.getString("IS_NULLABLE");
 				String remarks = columns.getString("REMARKS");
-				String def = columns.getString("COLUMN_DEF");
-				String sqlType = columns.getString("SQL_DATA_TYPE");
+				// String def = columns.getString("COLUMN_DEF");
+				// String sqlType = columns.getString("SQL_DATA_TYPE");
 				String pos = columns.getString("ORDINAL_POSITION");
 				//                String scTable = columns.getString("SCOPE_TABLE");
 				//                String scCatlg = columns.getString("SCOPE_CATALOG");
@@ -476,7 +519,7 @@ public class GenericScanner implements IJdbcScanner {
 //				System.out.println("\t\t\tcolumnn=" + catalogName + "/" + schemaName + "/" + tableName+ "/" + columnName+ "/" + typeName+ "/" + columnsize+ "/" + pos);
 
 				//        		createColumn( );
-				this.createColumn(catalogName, schemaName, tableName, columnName, typeName, columnsize, pos, isView);
+				this.createColumn(catalogName, schemaName, tableName, columnName, typeName, columnsize, pos, remarks, isView);
 
 			}  // end for each column
 		} catch (Exception ex) {
@@ -551,12 +594,12 @@ public class GenericScanner implements IJdbcScanner {
 					"com.infa.ldm.relational.ViewStatement", "com.infa.ldm.relational.Location"});
 			columnWriter.writeNext(new String[]{"class","identity","core.name","com.infa.ldm.relational.Datatype"
 					,"com.infa.ldm.relational.DatatypeLength", "com.infa.ldm.relational.Position"
-					, "core.dataSetUuid" 
+					, "core.dataSetUuid","core.description"
 			});
 			viewColumnWriter.writeNext(new String[]{"class","identity","core.name","com.infa.ldm.relational.Datatype"
 					,"com.infa.ldm.relational.DatatypeLength", "com.infa.ldm.relational.Position"
 					, "core.dataSetUuid"
-					, "com.infa.ldm.relational.ViewStatement"
+					, "com.infa.ldm.relational.ViewStatement","core.description"
 			});
 
 			linksWriter.writeNext(new String[]{"association","fromObjectIdentity","toObjectIdentity"});
@@ -630,6 +673,7 @@ public class GenericScanner implements IJdbcScanner {
 		}
 
 
+
 		
 		return true;
 
@@ -641,6 +685,7 @@ public class GenericScanner implements IJdbcScanner {
 
 		try {
 			this.otherObjWriter.writeNext(new String[] {DB_TYPE,dbName,dbName, "Relational",dbProductName});
+			dbCount++;
 			this.linksWriter.writeNext(new String[] {"core.ResourceParentChild","",dbName});
 		} catch (Exception ex) {
 			ex.printStackTrace();
@@ -657,6 +702,7 @@ public class GenericScanner implements IJdbcScanner {
 
 		try {
 			this.otherObjWriter.writeNext(new String[] {SCH_TYPE,schId,schema,"", ""});
+			schCount++;
 			this.linksWriter.writeNext(new String[] {"com.infa.ldm.relational.DatabaseSchema",dbName,schId});
 		} catch (Exception ex) {
 			ex.printStackTrace();
@@ -672,6 +718,7 @@ public class GenericScanner implements IJdbcScanner {
 
 		try {
 			this.tableWriter.writeNext(new String[] {TAB_TYPE,tabId,table,desc});
+			tabCount++;
 			this.linksWriter.writeNext(new String[] {"com.infa.ldm.relational.SchemaTable",schId,tabId});
 		} catch (Exception ex) {
 			ex.printStackTrace();
@@ -687,6 +734,7 @@ public class GenericScanner implements IJdbcScanner {
 
 		try {
 			this.viewWriter.writeNext(new String[] {VIEW_TYPE,tabId,table,desc,ddl, location});
+			vwCount++;
 			this.linksWriter.writeNext(new String[] {"com.infa.ldm.relational.SchemaView",schId,tabId});
 		} catch (Exception ex) {
 			ex.printStackTrace();
@@ -697,7 +745,7 @@ public class GenericScanner implements IJdbcScanner {
 
 
 	protected void createColumn(String dbName, String schema, String table, String column, 
-			String type, String length, String pos, boolean isView) {
+			String type, String length, String pos, String desc, boolean isView) {
 
 		String schId = dbName + "/" + schema;
 		String tabId = schId + "/" + table;
@@ -705,10 +753,12 @@ public class GenericScanner implements IJdbcScanner {
 
 		try {
 			if (! isView) {
-				this.columnWriter.writeNext(new String[] {COL_TYPE,colId,column,type,length, pos, tabId});
+				this.columnWriter.writeNext(new String[] {COL_TYPE,colId,column,type,length, pos, tabId, desc});
+				colCount++;
 				this.linksWriter.writeNext(new String[] {"com.infa.ldm.relational.TableColumn",tabId,colId});
 			} else {
-				this.viewColumnWriter.writeNext(new String[] {VIEWCOL_TYPE,colId,column,type,length, pos, tabId});
+				this.viewColumnWriter.writeNext(new String[] {VIEWCOL_TYPE,colId,column,type,length, pos, tabId, desc});
+				vwColCount++;
 				this.linksWriter.writeNext(new String[] {"com.infa.ldm.relational.ViewViewColumn",tabId,colId});
 			}
 
@@ -721,14 +771,15 @@ public class GenericScanner implements IJdbcScanner {
 	
 	
 	protected void createViewColumn(String dbName, String schema, String table, String column, 
-			String type, String length, String pos, String expression) {
+			String type, String length, String pos, String expression, String desc) {
 
 		String schId = dbName + "/" + schema;
 		String tabId = schId + "/" + table;
 		String colId = tabId + "/" + column;
 
 		try {
-			this.viewColumnWriter.writeNext(new String[] {VIEWCOL_TYPE,colId,column,type,length, pos, tabId, expression});
+			this.viewColumnWriter.writeNext(new String[] {VIEWCOL_TYPE,colId,column,type,length, pos, tabId, expression, desc});
+			vwColCount++;
 			this.linksWriter.writeNext(new String[] {"com.infa.ldm.relational.ViewViewColumn",tabId,colId});
 		} catch (Exception ex) {
 			ex.printStackTrace();
