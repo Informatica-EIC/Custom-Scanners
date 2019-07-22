@@ -2,6 +2,8 @@ package com.infa.edc.scanner.jdbc;
 
 import java.io.File;
 import java.io.FileInputStream;
+import java.io.FileNotFoundException;
+import java.io.FileOutputStream;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.io.PrintWriter;
@@ -17,12 +19,14 @@ import java.util.Map;
 import java.util.Properties;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
+import java.util.zip.ZipEntry;
+import java.util.zip.ZipOutputStream;
 import java.sql.Connection;
 
 import com.opencsv.CSVWriter;
 
 public class DenodoScanner extends GenericScanner {
-	public static final String version="0.9.6";
+	public static final String version="0.9.7";
 	
 	protected static String DISCLAIMER="\n************************************ Disclaimer *************************************\n"
 			 + "By using the Denodo scanner, you are agreeing to the following:-\n"
@@ -61,6 +65,7 @@ public class DenodoScanner extends GenericScanner {
 	protected Set<String> epSkipViews = new HashSet<String>();
 	
 	protected boolean doDebug = false;
+	protected boolean exportCustLineageInScanner = false;
 
 	public DenodoScanner(String propertyFile) {
 		super(propertyFile);
@@ -89,6 +94,9 @@ public class DenodoScanner extends GenericScanner {
 			
 			doDebug = Boolean.parseBoolean(prop.getProperty("debug", "false"));
 			System.out.println("debug mode=" + doDebug);
+			
+			exportCustLineageInScanner = Boolean.parseBoolean(prop.getProperty("include.custlineage", "false"));
+			System.out.println("export custom lineage in scanner zip=" + exportCustLineageInScanner + " 10.2.2hf1+ feature");
 			
 			// look for any tables to skip in ep.skipTables
 			String epSkip = prop.getProperty("ep.skipobjects", "");
@@ -1346,6 +1354,8 @@ public class DenodoScanner extends GenericScanner {
 			// for each schema - then view...
 			int allCustLineageCount=0;
 			
+			List<String> tableLevelExternalLinks = new ArrayList<String>();
+			
 			for (String schema : tableDbNameMap.keySet()) {
 //				System.out.println("\tschema=" + schema);
 				for (String table : tableDbNameMap.get(schema)) {
@@ -1385,8 +1395,9 @@ public class DenodoScanner extends GenericScanner {
 			//				    	String fromSQL = rsDeps.getString("sqlsentence");
 							    	String viewWrapperName = rsDeps.getString("view_wrapper_name");
 							    	System.out.println(" wrapper=" + viewWrapperName);
-							    	String connectionName = getConnectionNameFromWrapper(schema, viewWrapperName);
-			
+							    	String connectionName = getConnectionNameFromWrapper(schema, viewWrapperName) + ":" + wrapperType;
+//							    	String connectionName = getConnectionNameFromWrapper(schema, viewWrapperName);
+							    			
 			//				    	System.out.println("\t\t\tsourced from: connectio= " + connectionName + " " + fromSchema + "." + fromTab + " sql=" + fromSQL);
 							    	// get the columns for the table...
 							    	// refactor - call a function to do this
@@ -1400,10 +1411,44 @@ public class DenodoScanner extends GenericScanner {
 								    		
 								    		String leftId = fromSchema + "/" + fromTab + "/" + col;
 								    		String rightId = schema + "/" + table + "/" + col;
-								    		String[] custLineage = new String[] {"",connectionName.replaceAll("\"", ""), databaseName,leftId,rightId};
+								    		
+								    		String tableLinkLey = connectionName + "/" + fromSchema + "/" + fromTab + ":" + schema + "/" + table;
+//								    		String[] custLineage = new String[] {"",connectionName.replaceAll("\"", ""), databaseName,leftId,rightId};
+											if (exportCustLineageInScanner) {
+//									    		custLineageWriter.writeNext(new String[] {"core.DirectionalDataFlow","X"+ connectionName.replaceAll("\"", ""), databaseName,leftId,rightId,""});
+									    		
+									    		if (!tableLevelExternalLinks.contains(tableLinkLey)) {
+													
+													tableLevelExternalLinks.add(tableLinkLey);
+													// internal way ($edlRes://")
+										    		custLineageWriter.writeNext(new String[] {"core.DataSetDataFlow",connectionName.replaceAll("\"", ""), 
+										    				"",
+										    				fromSchema + "/" + fromTab,
+										    				"$etlRes://" +  databaseName + "/" +schema + "/" + table,
+										    				""});
+
+										    		// both left| right connection assignment - not needed 
+//										    		custLineageWriter.writeNext(new String[] {"core.DataSetDataFlow", wrapperType + "__" + connectionName.replaceAll("\"", ""), 
+//										    				"denodo_" +databaseName,
+//										    				fromSchema + "/" + fromTab,
+//										    				schema + "/" + table,
+//										    				""});
+
+												}
+//									    		custLineageWriter.writeNext(new String[] {"core.DirectionalDataFlow",wrapperType + "__" + connectionName.replaceAll("\"", ""), "denodo_" +databaseName,leftId,rightId,""});
+												// custom lineage format whem embedded into the scanner - needs ETLContext column too (or it will fail)
+												// internal way ($edlRes://")
+												rightId = "$etlRes://" +  databaseName + "/" + schema + "/" + table + "/" + col;
+												custLineageWriter.writeNext(new String[] {"core.DirectionalDataFlow",connectionName.replaceAll("\"", ""), "",leftId,rightId,""});
+  												
+
+											} else {
+									    		custLineageWriter.writeNext(new String[] {"",connectionName.replaceAll("\"", ""), databaseName,leftId,rightId});
+												
+											}
 								    		custLineageCount++;
 								    		allCustLineageCount++;
-								    		custLineageWriter.writeNext(custLineage);
+//								    		custLineageWriter.writeNext(custLineage);
 				//				    		System.out.println(Arrays.toString(custLineage));
 								    	}
 							    	}
@@ -1585,6 +1630,9 @@ public class DenodoScanner extends GenericScanner {
 		boolean initialized=true;
 		String outFolder = customMetadataFolder + "_lineage";
 		String lineageFileName = outFolder + "/" + "denodo_lineage.csv";
+		if (exportCustLineageInScanner) {
+			lineageFileName = customMetadataFolder + "/" + "lineage.csv";
+		}
 		System.out.println("Step 3.1: initializing denodo specific files: " + lineageFileName);
 
 		try { 
@@ -1596,7 +1644,11 @@ public class DenodoScanner extends GenericScanner {
 			}
 			//			otherObjWriter = new CSVWriter(new FileWriter(otherObjectCsvName), ',', CSVWriter.NO_QUOTE_CHARACTER); 
 			custLineageWriter = new CSVWriter(new FileWriter(lineageFileName)); 
-			custLineageWriter.writeNext(new String[]{"Association","From Connection","To Connection","From Object","To Object"});
+			if (exportCustLineageInScanner) {
+				custLineageWriter.writeNext(new String[]{"Association","From Connection","To Connection","From Object","To Object","com.infa.ldm.etl.ETLContext"});
+			} else {
+				custLineageWriter.writeNext(new String[]{"Association","From Connection","To Connection","From Object","To Object"});
+			}
 
 			System.out.println("\tDenodo Scanner Files initialized");
 			
@@ -1641,10 +1693,79 @@ public class DenodoScanner extends GenericScanner {
 		
 		System.out.println("expressions found/links created: " + expressionsFound + "/" + expressionLinks);
 		System.out.println("lineage links written:  viewlevel=" + totalTableLineage + " columnLevel=" + totalColumnLineage);
+		
+		// we can';t call the superclass to close files - since it also zips 
+		//		super.closeFiles();
+		System.out.println("closing output files");
 
-		super.closeFiles();
+		try { 
+			otherObjWriter.close(); 
+			tableWriter.close();
+			viewWriter.close();
+			columnWriter.close(); 
+			viewColumnWriter.close(); 
+			linksWriter.close();
+		} catch (IOException e) { 
+			e.printStackTrace(); 
+			return false;
+		} 
 
+		/**
+		 * zip the files
+		 */
+//        List<String> srcFiles = Arrays.asList(
+//        		customMetadataFolder + "/" + CATALOG_SCHEMA_FILENAME, 
+//        		customMetadataFolder + "/" + TABLEVIEWS_FILENAME, 
+//        		customMetadataFolder + "/" + VIEWS_FILENAME, 
+//        		customMetadataFolder + "/" + VCOLUMN_FILENAME, 
+//        		customMetadataFolder + "/" + COLUMN_FILENAME, 
+//        		customMetadataFolder + "/" + LINKS_FILENAME
+//        		);
+
+        List<String> srcFiles = new ArrayList<String>();
+        srcFiles.add(customMetadataFolder + "/" + CATALOG_SCHEMA_FILENAME); 
+        srcFiles.add(customMetadataFolder + "/" + TABLEVIEWS_FILENAME); 
+        srcFiles.add(customMetadataFolder + "/" + VIEWS_FILENAME); 
+        srcFiles.add(customMetadataFolder + "/" + VCOLUMN_FILENAME); 
+        srcFiles.add(customMetadataFolder + "/" + COLUMN_FILENAME); 
+        srcFiles.add(customMetadataFolder + "/" + LINKS_FILENAME); 
+
+        
+        if (this.exportCustLineageInScanner) {
+        	srcFiles.add(customMetadataFolder + "/" + "lineage.csv");
+        }
+        
+        try {
+        	System.out.println("creating zip file: " + customMetadataFolder + '/' + this.getClass().getSimpleName() + ".zip");
+	        FileOutputStream fos = new FileOutputStream(customMetadataFolder + '/' + this.getClass().getSimpleName() + ".zip");
+	        ZipOutputStream zipOut = new ZipOutputStream(fos);
+	        for (String srcFile : srcFiles) {
+	            File fileToZip = new File(srcFile);
+	            FileInputStream fis;
+					fis = new FileInputStream(fileToZip);
+		            ZipEntry zipEntry = new ZipEntry(fileToZip.getName());
+		            zipOut.putNextEntry(zipEntry);
+		 
+		            byte[] bytes = new byte[1024];
+		            int length;
+		            while((length = fis.read(bytes)) >= 0) {
+		                zipOut.write(bytes, 0, length);
+		            }
+		            fis.close();
+	        }
+	        zipOut.close();
+	        fos.close();
+		} catch (FileNotFoundException e) {
+			e.printStackTrace();
+		} catch (IOException e) {
+			e.printStackTrace();
+		}
+
+
+
+		
 		return true;
+
 
 	}
 

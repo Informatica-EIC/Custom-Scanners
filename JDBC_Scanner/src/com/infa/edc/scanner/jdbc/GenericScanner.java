@@ -34,7 +34,7 @@ import com.opencsv.CSVWriter;
  *
  */
 public class GenericScanner implements IJdbcScanner {
-	public static final String version="0.9.1";
+	public static final String version="0.9.2";
 	public String propertyFileName;
 	public String driverClass;
 	public String dbURL;
@@ -70,11 +70,11 @@ public class GenericScanner implements IJdbcScanner {
 	protected String VIEW_TYPE="com.infa.ldm.relational.View";
 	protected String VIEWCOL_TYPE="com.infa.ldm.relational.ViewColumn";
 
-	protected String CATALOG_SCHEMA_FILENAME="catalogAndSchemas.csv";
-	protected String TABLEVIEWS_FILENAME="tables.csv";
-	protected String VIEWS_FILENAME="views.csv";
-	protected String COLUMN_FILENAME="columns.csv";
-	protected String VCOLUMN_FILENAME="viewColumns.csv";
+	protected String CATALOG_SCHEMA_FILENAME="objects-catalogAndSchemas.csv";
+	protected String TABLEVIEWS_FILENAME="objects-tables.csv";
+	protected String VIEWS_FILENAME="objects-views.csv";
+	protected String COLUMN_FILENAME="objects-columns.csv";
+	protected String VCOLUMN_FILENAME="objects-viewColumns.csv";
 	protected String LINKS_FILENAME="links.csv";
 
 
@@ -188,7 +188,7 @@ public class GenericScanner implements IJdbcScanner {
 			System.out.println("\tunable to find class: " + classType + " " + e.getClass().getName() + " exiting...");
 			return null;
 		}  
-		System.out.println("\tjdbc deiver class validated successfully!");
+		System.out.println("\tjdbc driver class validated successfully!");
 
 		// valid driver class - now try the actual connection
 		System.out.println("Step 2: Attempting to connect to database using url=" + url + " using: "  + this.getClass().getName());
