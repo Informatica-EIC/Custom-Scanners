@@ -1,5 +1,15 @@
 Version History/Changes for Denodo Scanner
 ------------------------------------------
+2019/07/22 - v0.9.7
+- all object .csv files are now prefixed objects-*.csv (needed for 10.2.2hf1+)
+- changes for v10.2.2hf1 and later (for older versions, processing remains the same)
+  - added new flag in .properties file "include.custlineage" - with a default of false
+    when set to true - lineage will be generated in a seperate folder, lineage.csv will
+    be included in the scanner output
+  - when importing into EDC, using v10.2.2hf1+ - set the following:-
+    ETL Resource=Yes  (etl really meaans the scanner has external lineage in this case)
+    Auto Assign Connections - can be on or off, same as for any custom lineage resource
+  - connections naming convention <denodo_database>.<denodo_connection_name>:<wrappertype>
 
 2019/07/08 - v0.9.6
 - re-factored view lineage processing column level
