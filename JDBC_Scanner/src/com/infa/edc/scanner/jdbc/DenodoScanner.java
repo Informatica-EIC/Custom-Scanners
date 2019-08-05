@@ -26,7 +26,7 @@ import java.sql.Connection;
 import com.opencsv.CSVWriter;
 
 public class DenodoScanner extends GenericScanner {
-	public static final String version="0.9.7";
+	public static final String version="0.9.8";
 	
 	protected static String DISCLAIMER="\n************************************ Disclaimer *************************************\n"
 			 + "By using the Denodo scanner, you are agreeing to the following:-\n"
@@ -60,9 +60,15 @@ public class DenodoScanner extends GenericScanner {
 	protected Map<String, Map<String, List<String>>> colDbNameMap = new HashMap<String, Map<String, List<String>>>();
 	
 	protected Map<String, String> tableWrapperTypes = new HashMap<String,String>();
+	protected Map<String, DataSource> tableDataSources = new HashMap<String,DataSource>();
+	protected Map<String, Wrapper> tableWrappers = new HashMap<String, Wrapper>();
+	protected Map<String, DataSource> allDataSources = new HashMap<String, DataSource>();
+	
+	protected static List<String> tablesWithSQL = new ArrayList<String>();
 	
 	// debugging for AxaXL
 	protected Set<String> epSkipViews = new HashSet<String>();
+
 	
 	protected boolean doDebug = false;
 	protected boolean exportCustLineageInScanner = false;
@@ -114,7 +120,7 @@ public class DenodoScanner extends GenericScanner {
 			
 						
 	     } catch(Exception e) {
-	     	System.out.println("error reading properties file: " + propertyFile);
+	     	System.out.println("ERROR: reading properties file: " + propertyFile);
 	     	e.printStackTrace();
 	     }
 
@@ -179,37 +185,129 @@ public class DenodoScanner extends GenericScanner {
 	@Override
 	public void getSchemas(String catalogName) {
 		System.out.println("Step 6: creating denodo schemas (from catalogs)");
+		System.out.println("pass 1 - extracting datasources for datbase/schemas");
 		ResultSet catalogs;
+		List<String> schemasToProcess = new ArrayList<String>();
 		try {
 			catalogs = dbMetaData.getCatalogs();
 			String schemaName;
 		    while (catalogs.next()) {
 		    	schemaName = catalogs.getString(1);  //"TABLE_CATALOG"
-		        System.out.println("\tschema: " + schemaName);
+		        System.out.print("\tschema: " + schemaName);
 		        
 				if (isCatalogScanned(schemaName)) {
+					schemasToProcess.add(schemaName);
+				
+					collectDataSourcesforSchema(schemaName);
+					/**
 			        // create the schema object
 		    		createSchema(catalogName, schemaName);
+		    		
+		    		// extract datasources - we need these later, since they are used across databases
 		    		// process tables
 		    		getTables(catalogName, schemaName);
 		    		getViews(catalogName, schemaName);
 		    		
 		    		// call flush for each schema (helps with monitoring)
+		    		// get producerWebServices....
+		    		getProducerWebServices(catalogName, schemaName);
+		    		
 		    		this.flushFiles();
 				} else {
 					// message for catalog is not exported...
 					System.out.println("\tschema=" + schemaName + " skipped - not included in catalog filter: " + catalogFilter);
 				}
 
-		        
-
 		    }
 		} catch (SQLException e) {
 			e.printStackTrace();
 		}
 
+		// pass 2 - extract the schema metatata
+		System.out.println("pass 2 - extracting structure for datbase/schema");
+		for (String schemaName : schemasToProcess) {
+	        System.out.println("\tschema: " + schemaName);
+    		createSchema(catalogName, schemaName);
+    		
+    		// extract datasources - we need these later, since they are used across databases
+    		// process tables
+    		getTables(catalogName, schemaName);
+    		getViews(catalogName, schemaName);
+    		
+    		// call flush for each schema (helps with monitoring)
+    		// get producerWebServices....
+    		// WIP - procucer web service metadata
+//    		getProducerWebServices(catalogName, schemaName);
+    		
+    		this.flushFiles();
+			
+		}
 	}
 
+	protected void collectDataSourcesforSchema(String aSchema) {
+		String sqlQuery="select * from get_elements() where input_database_name = ? and input_type='DataSources'";
+		int dsCount = 0;
+		try {
+//			ResultSet rsViews = dbMetaData.getTables(schemaName, null, null, new String[] { "VIEW" });
+			PreparedStatement dsStmnt = null;
+			dsStmnt = connection.prepareStatement(sqlQuery);
+			dsStmnt.setString(1, aSchema);
+			if (doDebug && debugWriter !=null) {
+				debugWriter.println("collectDataSourcesforSchema:\tprepared sql statement=" +sqlQuery );
+				debugWriter.flush();
+			}
+
+	        ResultSet rsDataSources = dsStmnt.executeQuery();
+			while (rsDataSources.next()) {
+				// Print
+				dsCount++;
+				// jdbc standard call returns TABLE_NAME
+				//String viewName = rsViews.getString("TABLE_NAME");
+				
+				// denodo GET_VIEWS() returns "name"
+				String dsName = rsDataSources.getString("name");
+				String dsType = rsDataSources.getString("subtype").toUpperCase();
+
+				String viewSQL="desc vql datasource " + dsType + " \"" + aSchema + "\".\"" + dsName + "\"";
+//				PreparedStatement wrapperStmnt = null;
+//				String wrapperQuery = "DESC VQL WRAPPER JDBC ";
+				String viewSqlStmnt="";
+		        try {
+					Statement stViewSql = connection.createStatement(); 
+					ResultSet rs = stViewSql.executeQuery(viewSQL);
+					while (rs.next()) {
+//						System.out.println("\t\twrapper.....");
+//						System.out.println("view sql^^^^=" + viewSQL);
+						viewSqlStmnt = rs.getString("result");
+						// also extract the datasource - for lineage to non JSON objects
+						int startPos = viewSqlStmnt.indexOf("CREATE DATASOURCE");
+						int endPos = viewSqlStmnt.indexOf(";\n", startPos+15);
+						if (startPos==-1 | endPos==-1) {
+							System.out.println("ERROR: cant find create datasource for " + aSchema  + "." + dsName );
+							startPos=0;  // work to do here - where there is no datasource because it is in a different folder
+						}
+						String datasrc = viewSqlStmnt.substring(startPos, endPos+1).trim();
+						// create or return an existing datasource
+						DataSource theDs = DataSource.createDataSource(datasrc, aSchema);
+						if (theDs != null) {
+							allDataSources.put(aSchema + "." + dsName, theDs);
+						}
+
+					}
+				} catch (SQLException e) {
+					e.printStackTrace();
+				}
+
+
+//				System.out.println("\treading datasource: " + aSchema + "." + dsName + " type=" + dsType);
+			}
+			
+		} catch (SQLException e) {
+			e.printStackTrace();
+		}
+		System.out.println("\tdatasources=" + dsCount + " allDataSources=" + allDataSources.size());
+		
+	}
 	
 	/** 
 	 * find all table objects
@@ -222,17 +320,31 @@ public class DenodoScanner extends GenericScanner {
 			debugWriter.flush();
 		}
 		try {
+			// error: might be related to dendo express - after 1000 tables using get_views - rsTables.next() hangs - needs testing (Revert back to jdbc getTables)
+			String tabQuery = "SELECT * FROM GET_VIEWS() " + 
+					"WHERE input_database_name = ? and view_type=0";
 			if (doDebug && debugWriter !=null) {
-				debugWriter.println("calling (dbMetaData.getTables(" + schemaName + ", null, null, new String[] { \"TABLE\" })" );
+				debugWriter.println("executing query to get tables : " + tabQuery );
 				debugWriter.flush();
 			}
+			PreparedStatement tabMetadata = connection.prepareStatement(tabQuery);
+			tabMetadata.setString(1, schemaName);
+
+			
 			ResultSet rsTables = dbMetaData.getTables(schemaName, null, null, new String[] { "TABLE" });
+//	        ResultSet rsTables = tabMetadata.executeQuery();
+
 			int tableCount = 0;
 			while (rsTables.next()) {
 				// Print
 				tableCount++;
 				
 				String tableName=rsTables.getString("TABLE_NAME");
+				String comment = rsTables.getString("REMARKS");
+//				String tableName = rsTables.getString("name");
+//				String comment = rsTables.getString("description");
+				String folder  = "";
+//				String folder = rsTables.getString("folder");
 				
 				List<String> values = tableDbNameMap.get(schemaName);
 				if (values==null) {
@@ -244,29 +356,36 @@ public class DenodoScanner extends GenericScanner {
 				
 				// get the wrapper type for the table (could be FF, JDBC, WS and some others)
 				// this is important for the external lineage for the objects...
-				String wrapperType = extractWrapperType(schemaName, tableName);
+				Wrapper tableWrapper = extractWrapper(schemaName, tableName);
+//				String wrapperType = extractWrapperType(schemaName, tableName);
 
 
 				// System.out.println("found one...");
-				System.out.print("\t\t" + rsTables.getString("TABLE_CAT") //+ " schema="
+				System.out.print("\t\t" + schemaName //+ " schema="
 						//+ rsTables.getString("TABLE_SCHEM") 
-						+ "." + rsTables.getString("TABLE_NAME")
+						+ "." + tableName
 //						+ " comments=" + rsTables.getClob("REMARKS") 
-						+ " wrapperType=" + wrapperType
+						+ " wrapperType=" + tableWrapper.getType()
 						);
 				if (doDebug && debugWriter !=null) {
-					debugWriter.println("getTables\t" + " catalog=" + rsTables.getString("TABLE_CAT") + " schema="
-							+ rsTables.getString("TABLE_SCHEM") + " tablename=" + rsTables.getString("TABLE_NAME")
-							+ " TABLE_TYPE=" + rsTables.getString("TABLE_TYPE")
+					debugWriter.println("getTables\t" + " catalog=" + schemaName + " schema="
+							+ schemaName + " tablename=" + tableName
+//							+ " TABLE_TYPE=" + rsTables.getString("view_type")
 //							+ " comments=" + rsTables.getClob("REMARKS")
 							);
 				}
+				
+				if (tableWrapper.getSqlSentance() != null) {
+					tablesWithSQL.add(schemaName  + "." + tableName);
+				}
 
 //				System.out.println(rsTables.getMetaData().getColumnTypeName(5));
-				this.createTable(catalogName, schemaName, rsTables.getString("TABLE_NAME"), rsTables.getString("REMARKS"));
+				this.createTableWithSQL(catalogName, schemaName, tableName, comment, tableWrapper.getSqlSentance(), folder);
+//				this.createTable(catalogName, schemaName, tableName, comment);
 				
-				
-				this.getColumnsForTable(catalogName, schemaName, rsTables.getString("TABLE_NAME"), false);
+//				System.out.println("calling get columns.."  + tableCount);
+				this.getColumnsForTable(catalogName, schemaName, tableName, false);
+//				System.out.println("called  get columns.." + tableCount + " hasnext:" + rsTables.isLast());
 			}
 			System.out.println("\tTables extracted: " + tableCount);
 //			System.out.println(this.tableWrapperTypes);
@@ -368,6 +487,16 @@ public class DenodoScanner extends GenericScanner {
 				
 				// denodo GET_VIEWS() returns "name"
 				String viewName = rsViews.getString("name");
+				String viewType = rsViews.getString("view_type");   // 0=table, 1=view, 2=interface
+				String viewTypeName = "VIEW";  // default
+				if (viewType.equals("0")) {
+					viewTypeName="TABLE";
+				} else if (viewType.equals("2")) {
+					viewTypeName="INTERFACE VIEW";
+				} else if (viewType.equals("3")) {
+					viewTypeName="MATERIALIZED TABLE";
+				}
+				// MATERIALIZED TABLE
 				
 				List<String> values = viewDbNameMap.get(schemaName);
 				if (values==null) {
@@ -410,9 +539,22 @@ public class DenodoScanner extends GenericScanner {
 						
 						// @todo @important - get the wrapper typoe (DF JDBC WF ...
 						
-						// now we need to extract the DATASOURCENAME='<name>'
-						///int dsStart = result.indexOf("DATASOURCENAME=");
-//						System.out.println("start pos=" + dsStart + " total length=" + result.length());
+						String createStr = "CREATE " + viewTypeName + " " + viewName;
+						if (!viewName.toLowerCase().equals(viewName) | viewName.contains(".") | viewName.contains("$") | viewName.contains("/") | viewName.contains("-") ) {
+							// there are mixed case characters - surround with "
+							createStr = "CREATE " + viewTypeName + " \"" + viewName + "\"";
+						}
+						int dsStart = viewSqlStmnt.indexOf(createStr);
+//						System.out.println("start pos=" + dsStart + " total length=" + viewSqlStmnt.length());
+						if (dsStart > -1) {
+							int dsEnd = viewSqlStmnt.indexOf(");\n", dsStart);
+//							System.out.println("start end=" + dsEnd + " total length=" + viewSqlStmnt.length());
+							viewSqlStmnt = viewSqlStmnt.substring(dsStart, dsEnd+3);
+//							System.out.println(viewSqlStmnt);
+						} else {
+							// store the whole string
+							System.out.println("\n\n\n\nERROR: can't find start of " + viewTypeName + " " + createStr + "\n\n\n\n\n\n");
+						}
 						///int dsEnd = result.indexOf("\n", dsStart);
 //						System.out.println("start end=" + dsEnd + " total length=" + result.length());
 						///if (dsStart>0 && dsEnd < result.length()) {
@@ -424,7 +566,7 @@ public class DenodoScanner extends GenericScanner {
 				}
 
 				
-				
+//				viewSqlStmnt = "";  // delete for validation testing
 				this.createView(catalogName, schemaName, viewName, rsViews.getString("description"), viewSqlStmnt, rsViews.getString("folder"));
 				
 				// for denodo - we want to document the expression formula for any calculated fields
@@ -556,7 +698,7 @@ public class DenodoScanner extends GenericScanner {
                 		
 		    }  // end for each column
     	} catch (Exception ex) {
-    		System.out.println("error extracting column metadata...");
+    		System.out.println("ERROR: extracting column metadata...");
     		ex.printStackTrace();
 			if (doDebug && debugWriter !=null) {
 				debugWriter.println("getColumnsForTable - Exception" );
@@ -870,6 +1012,7 @@ public class DenodoScanner extends GenericScanner {
 			debugWriter.flush();
 		}
 				
+
 //		System.out.println("elements scanned..." + elementsScanned.size());
 //		System.out.println(elementsScanned);
 		
@@ -1024,7 +1167,7 @@ public class DenodoScanner extends GenericScanner {
 			debugWriter.println("extractViewColumnLevelLineage\tpreparedStatement=" + query );
 			debugWriter.flush();
 		}
-		
+
 		// nodupes
 		Set<String> colUniqeLineage = new HashSet<String>();		
 				
@@ -1041,7 +1184,7 @@ public class DenodoScanner extends GenericScanner {
     	boolean lastLinkedActual = false;
     	
 		
-//        int recCount=0;		
+        int recCount=0;		
         try {
     		PreparedStatement deps = connection.prepareStatement(query);
     		deps.setString(1, dbName);
@@ -1049,7 +1192,7 @@ public class DenodoScanner extends GenericScanner {
 			deps.setString(3, null);
 	        ResultSet rsDeps = deps.executeQuery();
 		    while(rsDeps.next()) {
-//		    	recCount++;
+		    	recCount++;
 //		    	if (viewName.equals("etq_capa_CAPATiming") && recCount>=656) {
 
 //		    	String inViewName = rsDeps.getString("input_view_name");
@@ -1207,6 +1350,7 @@ public class DenodoScanner extends GenericScanner {
 		    	
 
 		    }  // next record from db
+		    
 		} catch (SQLException e) {
 			e.printStackTrace();
 			if (doDebug && debugWriter !=null) {
@@ -1223,6 +1367,10 @@ public class DenodoScanner extends GenericScanner {
 				debugWriter.flush();
 			}
 		}
+
+        if (recCount==0) {
+        	System.out.println("\t\t\tERROR: 0 column lineage records returned from for: " + dbName + "." + viewName + " query=" + query);
+	    }
  
 		if (doDebug && debugWriter !=null) {
 			debugWriter.println("exiting extractViewColumnLevelLineage(" +dbName+ ", " + viewName + ", NULL)" );
@@ -1342,20 +1490,20 @@ public class DenodoScanner extends GenericScanner {
 		
 		try {
 	        long start = System.currentTimeMillis();
-			System.out.println("\textra processing for lineage outside of denodo (custom lineage)...");
-			String tableSourcedFromSQL="SELECT * FROM GET_SOURCE_TABLE() " + 
-					"WHERE input_database_name = ? " + 
-					"AND input_view_name = ?";
-			if (doDebug && debugWriter !=null) {
-				debugWriter.println("extraProcessing\tsqlstatement=" + tableSourcedFromSQL);
-				debugWriter.flush();
-			}
-			PreparedStatement tableDeps = null;
+//			System.out.println("\textra processing for lineage outside of denodo (custom lineage)...");
+//			String tableSourcedFromSQL="SELECT * FROM GET_SOURCE_TABLE() " + 
+//					"WHERE input_database_name = ? " + 
+//					"AND input_view_name = ?";
+//			if (doDebug && debugWriter !=null) {
+//				debugWriter.println("extraProcessing\tsqlstatement=" + tableSourcedFromSQL);
+//				debugWriter.flush();
+//			}
+//			PreparedStatement tableDeps = null;
 			// for each schema - then view...
 			int allCustLineageCount=0;
 			
-			List<String> tableLevelExternalLinks = new ArrayList<String>();
-			
+//			List<String> tableLevelExternalLinks = new ArrayList<String>();
+			System.out.println("extracting custom lineage...");
 			for (String schema : tableDbNameMap.keySet()) {
 //				System.out.println("\tschema=" + schema);
 				for (String table : tableDbNameMap.get(schema)) {
@@ -1372,113 +1520,15 @@ public class DenodoScanner extends GenericScanner {
 						String wrapperType = this.tableWrapperTypes.get(schema + "." + table);
 						System.out.print("\t" + schema + "." + table + "  wrapperType=" + wrapperType);
 
-						
+				    	Map<String, List<String>> tableMap = colDbNameMap.get(schema);
+						DataSource theDS = tableDataSources.get(schema + "." + table);
+						Wrapper theWr = tableWrappers.get(schema + "." + table);
+
 						int custLineageCount=0;
-						if (wrapperType != null && wrapperType.equalsIgnoreCase("JDBC")) {
-					
-							try {
-								tableDeps = connection.prepareStatement(tableSourcedFromSQL);
-								tableDeps.setString(1, schema);
-								tableDeps.setString(2, table);
-			
-						        ResultSet rsDeps = tableDeps.executeQuery();
-						        
-			//			        System.out.println("\t\tquery executed to get dependencies using COLUMN_DEPENDENCIES() call");
-			//			        int tabLvlLineageCount=0;
-							    while(rsDeps.next()) {
-							    	String fromSchema = rsDeps.getString("source_schema_name");
-							    	String fromCatalog = rsDeps.getString("source_catalog_name");
-							    	if (fromSchema==null) {
-							    		fromSchema=fromCatalog;
-							    	}
-							    	String fromTab = rsDeps.getString("source_table_name");
-			//				    	String fromSQL = rsDeps.getString("sqlsentence");
-							    	String viewWrapperName = rsDeps.getString("view_wrapper_name");
-							    	System.out.println(" wrapper=" + viewWrapperName);
-							    	String connectionName = getConnectionNameFromWrapper(schema, viewWrapperName) + ":" + wrapperType;
-//							    	String connectionName = getConnectionNameFromWrapper(schema, viewWrapperName);
-							    			
-			//				    	System.out.println("\t\t\tsourced from: connectio= " + connectionName + " " + fromSchema + "." + fromTab + " sql=" + fromSQL);
-							    	// get the columns for the table...
-							    	// refactor - call a function to do this
-							    	Map<String, List<String>> tableMap = colDbNameMap.get(schema);
-//							    	System.out.println("test??? " + tableMap.get(table));
-							    	if (tableMap == null || tableMap.get(table)==null) {
-							    		System.out.println("error - no tableMap for schema " + schema + " table=" + table);
-							    	} else {
-								    	for (String col : tableMap.get(table)) {
-				//				    		System.out.println("\t\t\t\tColumn lineage: " + col);
-								    		
-								    		String leftId = fromSchema + "/" + fromTab + "/" + col;
-								    		String rightId = schema + "/" + table + "/" + col;
-								    		
-								    		String tableLinkLey = connectionName + "/" + fromSchema + "/" + fromTab + ":" + schema + "/" + table;
-//								    		String[] custLineage = new String[] {"",connectionName.replaceAll("\"", ""), databaseName,leftId,rightId};
-											if (exportCustLineageInScanner) {
-//									    		custLineageWriter.writeNext(new String[] {"core.DirectionalDataFlow","X"+ connectionName.replaceAll("\"", ""), databaseName,leftId,rightId,""});
-									    		
-									    		if (!tableLevelExternalLinks.contains(tableLinkLey)) {
-													
-													tableLevelExternalLinks.add(tableLinkLey);
-													// internal way ($edlRes://")
-										    		custLineageWriter.writeNext(new String[] {"core.DataSetDataFlow",connectionName.replaceAll("\"", ""), 
-										    				"",
-										    				fromSchema + "/" + fromTab,
-										    				"$etlRes://" +  databaseName + "/" +schema + "/" + table,
-										    				""});
-
-										    		// both left| right connection assignment - not needed 
-//										    		custLineageWriter.writeNext(new String[] {"core.DataSetDataFlow", wrapperType + "__" + connectionName.replaceAll("\"", ""), 
-//										    				"denodo_" +databaseName,
-//										    				fromSchema + "/" + fromTab,
-//										    				schema + "/" + table,
-//										    				""});
-
-												}
-//									    		custLineageWriter.writeNext(new String[] {"core.DirectionalDataFlow",wrapperType + "__" + connectionName.replaceAll("\"", ""), "denodo_" +databaseName,leftId,rightId,""});
-												// custom lineage format whem embedded into the scanner - needs ETLContext column too (or it will fail)
-												// internal way ($edlRes://")
-												rightId = "$etlRes://" +  databaseName + "/" + schema + "/" + table + "/" + col;
-												custLineageWriter.writeNext(new String[] {"core.DirectionalDataFlow",connectionName.replaceAll("\"", ""), "",leftId,rightId,""});
-  												
-
-											} else {
-									    		custLineageWriter.writeNext(new String[] {"",connectionName.replaceAll("\"", ""), databaseName,leftId,rightId});
-												
-											}
-								    		custLineageCount++;
-								    		allCustLineageCount++;
-//								    		custLineageWriter.writeNext(custLineage);
-				//				    		System.out.println(Arrays.toString(custLineage));
-								    	}
-							    	}
-			
-							    }
-						        
-						        rsDeps.close();
-						        System.out.println("\t\t\t" + "custom lineage links written=" + custLineageCount);
-						    } catch (SQLException e ) {
-						    	System.out.println("\n**************  error executing query." + e.getMessage() + "\n**************  end of error");
-			//			        e.printStackTrace();
-								if (doDebug && debugWriter !=null) {
-									debugWriter.println("extraProcessing - Exception" );
-									e.printStackTrace(debugWriter);
-									debugWriter.flush();
-								}
-						    } catch (Exception ex) {
-						    	System.out.println("unknown error" + ex.getMessage());
-						    	ex.printStackTrace();
-								if (doDebug && debugWriter !=null) {
-									debugWriter.println("extraProcessing - Exception, unknown error" );
-									ex.printStackTrace(debugWriter);
-									debugWriter.flush();
-								}	    	
-						    }
-						   // end of JDBC wrapper type
-						}  else {
-							// non jdbc - log it to the console
-							System.out.println("\twrapper type:" + wrapperType + " not yet supported");						
-						}
+						custLineageCount += theWr.writeLineage(custLineageWriter,databaseName, schema, table, tableMap.get(table), exportCustLineageInScanner);
+						allCustLineageCount += custLineageCount;
+						
+						System.out.println(" " + custLineageCount + " lineage links exported");
 					}
 		
 //					System.out.println("total custom lineage links created: " + allCustLineageCount);
@@ -1495,7 +1545,7 @@ public class DenodoScanner extends GenericScanner {
 				    TimeUnit.MILLISECONDS.toSeconds(totalMillis) - 
 				    TimeUnit.MINUTES.toSeconds(TimeUnit.MILLISECONDS.toMinutes(totalMillis))
 				);
-			System.out.println("extraProcessing part 2 (custom lineage) time: " + timeTaken);
+			System.out.println("extraProcessing part 2 (custom lineage) time: " + timeTaken + " " + totalMillis + "ms");
 
 		} catch (Exception ex) {
 			System.out.println("exception found in extraProcessing" + ex.getMessage());
@@ -1586,9 +1636,14 @@ public class DenodoScanner extends GenericScanner {
 	 * @param table
 	 * @return
 	 */
-	protected String extractWrapperType(String catalog, String table) {
+	protected Wrapper extractWrapper(String catalog, String table) {
 		// get the view sql
 		String wrapperType="";
+		Wrapper theWrapper=null;
+		
+		if (table.equals("camstar_ccfKitWorkOrderHistory")) {
+			System.out.println("endless loop???");
+		}
 		// note - some tables have mixed case characters in the name - like ILMN.P2P/PurchaseOrderDetail_QV  (Hana)
 		String viewSQL="desc vql view \"" + catalog + "\".\"" + table + "\"";
 //		PreparedStatement wrapperStmnt = null;
@@ -1601,31 +1656,108 @@ public class DenodoScanner extends GenericScanner {
 //				System.out.println("\t\twrapper.....");
 //				System.out.println("view sql^^^^=" + viewSQL);
 				viewSqlStmnt = rs.getString("result");
-				
-				// @ todo - extract only the view definition - denodo also includes all dependent objects
-//				System.out.println("viewSQL=\n" + viewSqlStmnt);
-				
-				// @todo @important - get the wrapper typoe (DF JDBC WF ...
-				
+								
 				int startPos = viewSqlStmnt.indexOf("CREATE WRAPPER");
 //				System.out.println("create wrapper start: " + startPos);
 				int endPos = viewSqlStmnt.indexOf(" ", startPos+15);
 //				System.out.println("create wrapper end: " + endPos + " looking for<" + table + ">");
 				wrapperType = viewSqlStmnt.substring(startPos+15, endPos).trim();
 //				System.out.println("wrapper type raw: " + wrapperType);
+				endPos = viewSqlStmnt.indexOf(");\n", startPos+15);
+				String wrapperVQL = viewSqlStmnt.substring(startPos, endPos+3).trim();
 				
 				tableWrapperTypes.put(catalog + "." + table, wrapperType);
-
+								
+				theWrapper = Wrapper.createWrapper(wrapperVQL, catalog);
+				tableWrappers.put(catalog + "." + table, theWrapper);
+				return theWrapper;
+	
 			}
 		} catch (SQLException e) {
+			System.out.println("ERROR: exception found when extracting wrapper for table: " + catalog + "." + table);
 			e.printStackTrace();
 		}
 
-		return wrapperType;
+		return theWrapper;
 	}
 	
 	protected boolean initFiles() {
-		super.initFiles();
+		// don't call super.initfiles() - we have more headers for tables for denodo
+		boolean initialized=true;
+		System.out.println("Step 3: initializing files in: " + customMetadataFolder);
+
+		try { 
+			// check that the folder exists - if not, create it
+			File directory = new File(String.valueOf(customMetadataFolder));
+			if(!directory.exists()){
+				System.out.println("\tfolder: " + customMetadataFolder + " does not exist, creating it");
+				directory.mkdir();
+			}
+			//			otherObjWriter = new CSVWriter(new FileWriter(otherObjectCsvName), ',', CSVWriter.NO_QUOTE_CHARACTER); 
+			otherObjWriter = new CSVWriter(new FileWriter(customMetadataFolder + "/" + CATALOG_SCHEMA_FILENAME)); 
+			tableWriter = new CSVWriter(new FileWriter(customMetadataFolder + "/" + TABLEVIEWS_FILENAME)); 
+			viewWriter = new CSVWriter(new FileWriter(customMetadataFolder + "/" + VIEWS_FILENAME)); 
+			this.columnWriter = new CSVWriter(new FileWriter(customMetadataFolder + "/" + COLUMN_FILENAME)); 
+			this.viewColumnWriter = new CSVWriter(new FileWriter(customMetadataFolder + "/" + VCOLUMN_FILENAME)); 
+			this.linksWriter = new CSVWriter(new FileWriter(customMetadataFolder + "/" + LINKS_FILENAME)); 
+
+			otherObjWriter.writeNext(new String[]{"class","identity","core.name", "com.infa.ldm.relational.StoreType", "com.infa.ldm.relational.SystemType"});
+			tableWriter.writeNext(new String[]{"class","identity","core.name", "core.description", 
+					"com.infa.ldm.relational.ViewStatement", "com.infa.ldm.relational.Location"});
+			viewWriter.writeNext(new String[]{"class","identity","core.name", "core.description", 
+					"com.infa.ldm.relational.ViewStatement", "com.infa.ldm.relational.Location"});
+			columnWriter.writeNext(new String[]{"class","identity","core.name","com.infa.ldm.relational.Datatype"
+					,"com.infa.ldm.relational.DatatypeLength", "com.infa.ldm.relational.Position"
+					, "core.dataSetUuid","core.description"
+			});
+			viewColumnWriter.writeNext(new String[]{"class","identity","core.name","com.infa.ldm.relational.Datatype"
+					,"com.infa.ldm.relational.DatatypeLength", "com.infa.ldm.relational.Position"
+					, "core.dataSetUuid"
+					, "com.infa.ldm.relational.ViewStatement","core.description"
+			});
+
+			linksWriter.writeNext(new String[]{"association","fromObjectIdentity","toObjectIdentity"});
+			
+			String outFolder = customMetadataFolder + "_lineage";
+			String lineageFileName = outFolder + "/" + "denodo_lineage.csv";
+			if (exportCustLineageInScanner) {
+				lineageFileName = customMetadataFolder + "/" + "lineage.csv";
+			}
+			System.out.println("Step 3.1: initializing denodo specific files: " + lineageFileName);
+			directory = new File(String.valueOf(outFolder));
+			if(!directory.exists()){
+				System.out.println("\tfolder: " + outFolder + " does not exist, creating it");
+				directory.mkdir();
+			}
+			//			otherObjWriter = new CSVWriter(new FileWriter(otherObjectCsvName), ',', CSVWriter.NO_QUOTE_CHARACTER); 
+			custLineageWriter = new CSVWriter(new FileWriter(lineageFileName)); 
+			if (exportCustLineageInScanner) {
+				custLineageWriter.writeNext(new String[]{"Association","From Connection","To Connection","From Object","To Object","com.infa.ldm.etl.ETLContext"});
+			} else {
+				custLineageWriter.writeNext(new String[]{"Association","From Connection","To Connection","From Object","To Object"});
+			}
+
+			System.out.println("\tDenodo Scanner Files initialized");
+			
+			
+			if (doDebug) {
+				debugWriter = new PrintWriter("denodoScanner_debug.txt");
+			}
+
+
+			System.out.println("\tFiles initialized");
+
+		} catch (IOException e1) { 
+			initialized=false;
+			e1.printStackTrace(); 
+		} 
+
+		return initialized;
+
+		
+		/**
+		
+//		super.initFiles();
 		// assume working, until it is not
 		boolean initialized=true;
 		String outFolder = customMetadataFolder + "_lineage";
@@ -1667,6 +1799,8 @@ public class DenodoScanner extends GenericScanner {
 		} 
 
 		return initialized;
+		
+		*/
 	}
 
 	/**
@@ -1693,6 +1827,10 @@ public class DenodoScanner extends GenericScanner {
 		
 		System.out.println("expressions found/links created: " + expressionsFound + "/" + expressionLinks);
 		System.out.println("lineage links written:  viewlevel=" + totalTableLineage + " columnLevel=" + totalColumnLineage);
+		System.out.println("tables with sql statements:" + tablesWithSQL.size());
+		if (tablesWithSQL.size()>0) {
+			System.out.println(tablesWithSQL);
+		}
 		
 		// we can';t call the superclass to close files - since it also zips 
 		//		super.closeFiles();
@@ -1809,5 +1947,240 @@ public class DenodoScanner extends GenericScanner {
 		this.connection = theConnection;
 		
 	}
+
+    	System.out.println("\textracting producer web services - using GET_CATALOG_METADATA_WS()" );
+		int svcCount=0;
+		try {
+//			ResultSet rsViews = dbMetaData.getTables(schemaName, null, null, new String[] { "VIEW" });
+			PreparedStatement svcMetadata = null;
+			String wsQuery = "SELECT * " +
+					"FROM  WEBCONTAINER_ELEMENTS() " + 
+					"WHERE input_database_name = ?";
+			svcMetadata = connection.prepareStatement(wsQuery);
+			svcMetadata.setString(1, schemaName);
+			if (doDebug && debugWriter !=null) {
+				debugWriter.println("getProducerWebServices:\tprepared sql statement=" +wsQuery );
+				debugWriter.flush();
+			}
+
+
+	        ResultSet rsServices = svcMetadata.executeQuery();
+
+
+			// instead of calling standard jdbc - use this
+			// SELECT * FROM GET_VIEWS() WHERE input_database_name = '<catalogName>'
+			// will also return the view folder
+			
+			int viewCount = 0;
+			while (rsServices.next()) {
+				// Print
+				svcCount++;
+				// jdbc standard call returns TABLE_NAME
+				//String viewName = rsViews.getString("TABLE_NAME");
+				
+				// denodo GET_VIEWS() returns "name"
+				String producerServiceName = rsServices.getString("service_name");
+				String serviceType = rsServices.getString("service_type");
+				String serviceDesc = rsServices.getString("description");
+				String isDeployed = rsServices.getString("deployed");
+				String context  = rsServices.getString("context");
+				
+//				List<String> values = viewDbNameMap.get(schemaName);
+//				if (values==null) {
+//					values = new ArrayList<String>();
+//				}
+//				values.add(viewName);
+//				viewDbNameMap.put(schemaName, values);
+//				datasetsScanned.add(schemaName + "/" + viewName);
+				
+				WSService theService = new WSService(producerServiceName, serviceType, serviceDesc, isDeployed, context, null, null);
+
+
+				// System.out.println("found one...");
+				System.out.println("\t\t" + rsServices.getString("database_name")  + "." + producerServiceName
+						+ " service_type=" + serviceType
+						+ " context=" + context
+//						+ " comments=" + rsViews.getString("description")
+						);
+				//				System.out.println(rsTables.getMetaData().getColumnTypeName(5));
+				if (doDebug && debugWriter !=null) {
+					debugWriter.println("getProducerWebServices\t" + " catalog=" + rsServices.getString("database_name")  + " service=" + producerServiceName
+//							+ " comments=" + rsViews.getString("description")
+							);
+					debugWriter.flush();
+				}
+				
+				// get the view sql
+				/**
+				String viewSQL="desc vql view \"" + schemaName + "\".\"" + producerServiceName + "\"";
+//				PreparedStatement wrapperStmnt = null;
+//				String wrapperQuery = "DESC VQL WRAPPER JDBC ";
+				String viewSqlStmnt="";
+		        try {
+					Statement stViewSql = connection.createStatement(); 
+					ResultSet rs = stViewSql.executeQuery(viewSQL);
+					while (rs.next()) {
+//						System.out.println("\t\twrapper.....");
+//						System.out.println("view sql^^^^=" + viewSQL);
+						viewSqlStmnt = rs.getString("result");
+						
+					}
+				} catch (SQLException e) {
+					e.printStackTrace();
+				}
+				
+				*/
+				
+				
+//				this.createView(catalogName, schemaName, viewName, rsViews.getString("description"), viewSqlStmnt, rsViews.getString("folder"));
+				
+				// for denodo - we want to document the expression formula for any calculated fields
+				// so for this table - we will store in memory - 
+//				storeTableColExpressions(schemaName, viewName);
+
+
+				getColumnsForDeployedService(catalogName, schemaName, producerServiceName, theService);
+			}
+			System.out.println("\tServices (producer) extracted: " + svcCount);
+			
+			// collect for later 0 tge 
+
+		} catch (SQLException e) {
+			e.printStackTrace();
+			if (doDebug && debugWriter !=null) {
+				debugWriter.println("getViews - Exception" );
+				e.printStackTrace(debugWriter);
+				debugWriter.flush();
+			}
+		} catch (Exception ex) {
+			System.out.println("un-known exception caught" + ex.getMessage());
+			ex.printStackTrace();
+			if (doDebug && debugWriter !=null) {
+				debugWriter.println("getViews - Exception" );
+				ex.printStackTrace(debugWriter);
+				debugWriter.flush();
+			}
+		}
+		if (doDebug && debugWriter !=null) {
+			debugWriter.println("exiting getProducerWebServices(" +catalogName+ ", " + schemaName + ")" );
+			debugWriter.flush();
+		}
+
+	}
+	
+	/**
+	 * get the operations and input/output fields for a service
+	 * @param catalogName
+	 * @param schemaName
+	 * @param serviceName
+	 */
+	protected void 	getColumnsForDeployedService(String catalogName, String schemaName, String serviceName, WSService serviceObj) {
+		if (doDebug && debugWriter !=null) {
+			debugWriter.println("entering getColumnsForDeployedService(" +catalogName+ ", " + schemaName+ ", " + serviceName);
+			debugWriter.flush();
+		}
+//		Set<String> operations = new HashSet<String>();
+    	int colCount=0;
+    	try {
+    		// Note:  alternate select * from get_view_columns ('policy_asset', 'policy_asset'); - where order will be correct (derive pos)
+    		// Note:  if any denodo objects have a $ in the name, the standard JDBC getColumns call will return no rows
+    		//        so we need to use CATALOG_VDP_METADATA_VIEWS()
+    		//		    ResultSet columns = dbMetaData.getColumns(schemaName, null, tableName, null);
+		    
+			PreparedStatement svcColumns = null;
+			String viewColumnQRY = "select * from GET_CATALOG_METADATA_WS() " +
+					"WHERE input_database_name = ? AND input_ws_name  = ?";
+			svcColumns = connection.prepareStatement(viewColumnQRY);
+			svcColumns.setString(1, schemaName);
+			svcColumns.setString(2, serviceName);
+//			System.out.println("executing query" + viewColumnQRY + " passing:" + schemaName + " and " + tableName);
+			ResultSet rsSvcColumns = svcColumns.executeQuery();
+			int aColCount = 0;
+			while (rsSvcColumns.next()) {
+				aColCount++;
+				String operationName = rsSvcColumns.getString("operation_name");
+				String columnName = rsSvcColumns.getString("column_name");
+                String typeName = rsSvcColumns.getString("column_type_name");
+//                String wsName = rsSvcColumns.getString("ws_name");   // will match service name - so not needed
+                String pos = Integer.toString(aColCount);
+                String isInput = rsSvcColumns.getString("input");
+                String isOutput = rsSvcColumns.getString("output");
+                String mandatory = rsSvcColumns.getString("mandatory");
+                String operator = rsSvcColumns.getString("operator");
+                String operationType = rsSvcColumns.getString("operation_type");
+                aColCount = aColCount+0;
+                
+                serviceObj.addField(operationName, columnName, typeName, isInput, isOutput, mandatory, operator, operationType);
+                
+//                if (!operations.contains(operationName)) {
+//                	System.out.println("\toperation: " + operationName);
+//                	operations.add(operationName);
+//                }
+//				System.out.println("column found...")
+//			}
+//			System.out.println("columns really found = " + aColCount);
+			
+//		    while(columns.next()) {
+		    	colCount++;
+                
+                String colKey = schemaName + "/" + serviceName + "/" + columnName;
+                
+                // store the list of columns - for linking later
+//                elementsScanned.add(colKey);
+                              
+        		if (doDebug && debugWriter !=null) {
+        			debugWriter.println("getColumnsForDeployedService\t\tcolumnn=" + catalogName + "/" + schemaName + "/" + serviceName+ "/" + columnName+ "/" + typeName+ "/"  + pos);
+        			debugWriter.flush();
+        		}
+
+        		/**
+//        		createColumn( );
+//               	this.createColumn(catalogName, schemaName, tableName, columnName, typeName, columnsize, pos, comments, isView);
+                
+                // add to name mapping
+//                if (!isView) {
+                	Map<String, List<String>> schemaMap = colDbNameMap.get(schemaName);
+    				if (schemaMap==null) {
+    					schemaMap = new HashMap<String, List<String>>();
+    					colDbNameMap.put(schemaName, schemaMap);
+    				}
+    				
+    				// check the table is in the schema map
+    				List<String> cols = schemaMap.get(serviceName);
+    				if (cols==null) {
+    					// add a new list of columns
+    					cols = new ArrayList<String>();
+    					schemaMap.put(serviceName, cols);
+    					
+    				}
+    				cols.add(columnName);
+//                }
+
+        		 */
+
+                		
+		    }  // end for each column
+    	} catch (Exception ex) {
+    		System.out.println("error extracting column metadata...");
+    		ex.printStackTrace();
+			if (doDebug && debugWriter !=null) {
+				debugWriter.println("getColumnsForTable - Exception" );
+				ex.printStackTrace(debugWriter);
+				debugWriter.flush();
+			}
+    	}
+	    System.out.println(" columns: " + colCount + " operations=" + serviceObj.countOperations());
+	    if (colCount==0) {
+	    	System.out.println("why 0 cols??");
+	    }
+
+	    if (doDebug && debugWriter !=null) {
+			debugWriter.println("exiting getColumnsForDeployedService(" +catalogName+ ", " + schemaName+ ", " + serviceName + ")" );
+			debugWriter.flush();
+		}
+
+		
+	}
+
 
 }

@@ -1,5 +1,17 @@
 Version History/Changes for Denodo Scanner
 ------------------------------------------
+2019/08/05 - v0.9.8
+- custom for delimited files (wrapper type=DF) created
+- sql over-rides for base views (tables) is captured using com.infa.ldm.relational.ViewStatement
+  lineage is not possible for these tables (see known limitations) 
+  need a sql parser to extract the correct lineage
+- datasource metadata is now collected during a 1st pass for each denodo database
+  this is used to extract custom lineage for non JDBC/ODBC sources
+  
+Known Limitations:
+1.	custom lineage is not possible for base views using SQL statements
+
+
 2019/07/22 - v0.9.7
 - all object .csv files are now prefixed objects-*.csv (needed for 10.2.2hf1+)
 - changes for v10.2.2hf1 and later (for older versions, processing remains the same)
