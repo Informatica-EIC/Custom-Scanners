@@ -4,9 +4,13 @@ Version History/Changes for Denodo Scanner
 - custom for delimited files (wrapper type=DF) created
 - sql over-rides for base views (tables) is captured using com.infa.ldm.relational.ViewStatement
   lineage is not possible for these tables (see known limitations) 
-  need a sql parser to extract the correct lineage
+  the scanner log (console) will print the count of "tables with sql statements:<n>" 
+  and list each entry <db>.<basetable>
+  to extract lineage a sql parser would be required
 - datasource metadata is now collected during a 1st pass for each denodo database
   this is used to extract custom lineage for non JDBC/ODBC sources
+- custom lineage for jdbc - now using correct column name from wrapper definition
+  (was assuming column names were the same as what is used in the denodo base view)
   
 Known Limitations:
 1.	custom lineage is not possible for base views using SQL statements
@@ -19,7 +23,7 @@ Known Limitations:
     when set to true - lineage will be generated in a seperate folder, lineage.csv will
     be included in the scanner output
   - when importing into EDC, using v10.2.2hf1+ - set the following:-
-    ETL Resource=Yes  (etl really meaans the scanner has external lineage in this case)
+    ETL Resource=Yes  (etl really means the scanner has external lineage in this case)
     Auto Assign Connections - can be on or off, same as for any custom lineage resource
   - connections naming convention <denodo_database>.<denodo_connection_name>:<wrappertype>
 

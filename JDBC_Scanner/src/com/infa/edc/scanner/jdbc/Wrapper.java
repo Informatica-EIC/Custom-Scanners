@@ -92,7 +92,7 @@ public class Wrapper {
 	static Wrapper getWrapper(String key) {
 		Wrapper theWrapper = cache.get(key);
 		if (theWrapper==null) {
-			System.out.println("\t\tError: wrapper is null " + key);
+			System.out.println("\t\tERROR: wrapper is null " + key);
 		}
 		return theWrapper;
 	}
@@ -105,12 +105,9 @@ public class Wrapper {
 		// extract the datasource details
 		// split by newline
 		String[] lines =  wrapperVQL.split("\n");
-//		System.out.println("lines=" + lines.length);
-		boolean debug = false;
 		boolean isOutputSchema = false;
 		boolean isSqlSentence = false;
 		for (String aLine: lines) {
-//			System.out.println("line=" + aLine);
 			if (aLine.startsWith("CREATE WRAPPER")) {
 				String[] tokens = aLine.substring(15).trim().split(" ");
 				if (tokens.length>=2) {
@@ -140,7 +137,7 @@ public class Wrapper {
 				
 				this.dataSourceObj = DataSource.getDataSource(dsKey);
 				if (this.dataSourceObj==null) {
-					System.out.println("Error:  cant lookup datasource for wrapper: " + dsKey);
+					System.out.println("ERROR:  cant lookup datasource for wrapper: " + dsKey);
 				}
 //				System.out.println("wrapper - ds name=" + theWrapper.getDataSource() + " actual source=" + actualDS);
 
@@ -212,7 +209,7 @@ public class Wrapper {
 			
 			if (this.sqlSentance != null) {
 				// skip??
-				System.out.print(" WARNING: sqlsentance found... no custom lineage created. " + this.sqlSentance + " ");
+				System.out.print(" WARNING: sqlsentance found... no custom lineage created. " + this.sqlSentance.length() + " characters ");
 				return custLineageCount;
 			}
 			custLineageCount++;
@@ -233,7 +230,7 @@ public class Wrapper {
 			for (String tgtCol : columns) {
 				String fromCol = this.outputSchema.get(tgtCol);
 				if (fromCol==null || fromCol.isEmpty()) {
-					System.out.println("\tError: no from col mapped???? to=" + toSch + "." + toTab + "." + tgtCol);
+					System.out.println("\tERROR: no from col mapped???? to=" + toSch + "." + toTab + "." + tgtCol);
 					System.out.println(this.outputSchema.keySet());
 				} else {
 					custLineageCount++;
@@ -257,10 +254,10 @@ public class Wrapper {
 			
 		} else if (this.type.equals("DF")) {
 			if (this.dataSourceObj==null) {
-				System.out.println("Error: null datasource???");
+				System.out.println("ERROR: null datasource???");
 			} else {
 				if (this.dataSourceObj.getRoute()==null) {
-					System.out.println("Error: null route in datasource???");
+					System.out.println("ERROR: null route in datasource???");
 					
 				}
 			}
@@ -272,16 +269,20 @@ public class Wrapper {
 				custLineageCount++;
 				String fromKey = (folder + "/" + dataSourceObj.getFileNamePattern()).replaceAll("//", "/");
 				String toKey = "$etlRes://" +  toDB + "/" +toSch + "/" + toTab;
-				lineageWriter.writeNext(new String[] {"core.DataSetDataFlow",connectionName, 
-	    				"",  // to connection
-	    				fromKey,
-	    				toKey,
-	    				""});
+				if (! exportCustLineageInScanner) {
+					toKey = toSch + "/" + toTab;
+				} else {
+					lineageWriter.writeNext(new String[] {"core.DataSetDataFlow",connectionName, 
+		    				"",  // to connection
+		    				fromKey,
+		    				toKey,
+		    				""});
+				}
 				
 				for (String tgtCol : columns) {
 					String fromCol = this.outputSchema.get(tgtCol);
 					if (fromCol==null || fromCol.isEmpty()) {
-						System.out.println("Error: no from col mapped???? to=" + toSch + "." + toTab + "." + tgtCol);
+						System.out.println("ERROR: no from col mapped???? to=" + toSch + "." + toTab + "." + tgtCol);
 					} else {
 						custLineageCount++;
 						lineageWriter.writeNext(new String[] {"core.DirectionalDataFlow",connectionName, 

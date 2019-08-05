@@ -197,20 +197,8 @@ public class DenodoScanner extends GenericScanner {
 		        
 				if (isCatalogScanned(schemaName)) {
 					schemasToProcess.add(schemaName);
-				
+					// get the datasources for this schema - pass 2 we extract the schema contents
 					collectDataSourcesforSchema(schemaName);
-					/**
-			        // create the schema object
-		    		createSchema(catalogName, schemaName);
-		    		
-		    		// extract datasources - we need these later, since they are used across databases
-		    		// process tables
-		    		getTables(catalogName, schemaName);
-		    		getViews(catalogName, schemaName);
-		    		
-		    		// call flush for each schema (helps with monitoring)
-		    		// get producerWebServices....
-		    		getProducerWebServices(catalogName, schemaName);
 		    		
 		    		this.flushFiles();
 				} else {
@@ -234,15 +222,11 @@ public class DenodoScanner extends GenericScanner {
     		getTables(catalogName, schemaName);
     		getViews(catalogName, schemaName);
     		
-    		// call flush for each schema (helps with monitoring)
-    		// get producerWebServices....
-    		// WIP - procucer web service metadata
-//    		getProducerWebServices(catalogName, schemaName);
     		
     		this.flushFiles();
 			
 		}
-	}
+	}  // getSchemas
 
 	protected void collectDataSourcesforSchema(String aSchema) {
 		String sqlQuery="select * from get_elements() where input_database_name = ? and input_type='DataSources'";
@@ -298,7 +282,6 @@ public class DenodoScanner extends GenericScanner {
 					e.printStackTrace();
 				}
 
-
 //				System.out.println("\treading datasource: " + aSchema + "." + dsName + " type=" + dsType);
 			}
 			
@@ -307,7 +290,7 @@ public class DenodoScanner extends GenericScanner {
 		}
 		System.out.println("\tdatasources=" + dsCount + " allDataSources=" + allDataSources.size());
 		
-	}
+	} // collectDataSourcesforSchema
 	
 	/** 
 	 * find all table objects
@@ -730,124 +713,17 @@ public class DenodoScanner extends GenericScanner {
 	 *        select * from   view_dependencies ('<db>', '<view>' )
 	 *        where depth=1 and view_type != 'Base View'
 	 *        order by input_view_database_name, input_view_name, view_identifier desc
-	 *        
-	 *        then we process each record - 
-	 *          - if the input_view_name = view_name & private_view = false
-	 *               make a direct connection - if depencency_name (a view name) is a real object (not a private view)
-	 *          - if the inut_view_name != view_name & private_view = true
-	 *               it is an indirect reference 
-	 *               if the depencency_name object is valid - link it (otherwise skip it - since it is just a private view)
 	 * 
 	 * @param dbName the database that the view belongs to
 	 * @param viewName the view that we need lineage for
-	 */
-	protected void extractViewLevelLineage(String dbName, String viewName) {
-		if (doDebug && debugWriter !=null) {
-			debugWriter.println("entering extractViewLevelLineage(" +dbName+ ", " + viewName + ")" );
-			debugWriter.flush();
-		}
-
-		System.out.println("\t\tview lineage extraction - using view_dependencies stored procedure for: " + dbName + "/" + viewName);
-		String query="select * " + 
-				"from   view_dependencies (?, ?)  " + 
-				"where depth=1 and view_type != 'Base View' " //+ 
-				//"order by input_view_database_name, input_view_name, view_identifier desc"
-				;
-		if (doDebug && debugWriter !=null) {
-			debugWriter.println("extractViewLevelLineage\tpreparedStatement=" + query);
-			debugWriter.flush();
-		}
-		
-//		System.out.println("structs scanned..." + datasetsScanned.size());
-//		System.out.println(datasetsScanned);
-		
-//        int recCount=0;		
-        try {
-    		PreparedStatement deps = connection.prepareStatement(query);
-    		deps.setString(1, dbName);
-			deps.setString(2, viewName);
-	        ResultSet rsDeps = deps.executeQuery();
-		    while(rsDeps.next()) {
-//		    	recCount++;
-//		    	boolean isDebug=false;
-		    	String inViewName = rsDeps.getString("input_view_name");
-		    	String returnedviewName = rsDeps.getString("view_name");
-		    	String privateView = rsDeps.getString("private_view");
-//		    	String fromDB = rsDeps.getString("view_database_name");
-		    	String fromDB = rsDeps.getString("dependency_database_name");
-		    	String fromTab = rsDeps.getString("dependency_name");
-//		    	String viewType = rsDeps.getString("view_type");
-//    			if (viewName.equalsIgnoreCase("pspstatus_Project_Summary") ) {
-//    				System.out.println("start debug for view lineage here... rec=" + recCount);
-//    				System.out.println("\ttest 1: " + inViewName.equals(returnedviewName) + " && " + privateView.equals("false") + " = " + ( inViewName.equals(returnedviewName) && privateView.equals("false") ));
-//    				System.out.println("\ttest 2: " + (! inViewName.equals(returnedviewName)) + " && " + privateView.equals("true") + " " + returnedviewName.startsWith("_" + inViewName.toLowerCase() + "_") + " = " + ( ! inViewName.equals(returnedviewName) && privateView.equals("true")  && returnedviewName.startsWith("_" + inViewName.toLowerCase() + "_") ) );
-//    				isDebug=true;
-//    			}
-
-		    	
-//		    	System.out.println("\t3 way: " + inViewName + " " + returnedviewName + " " + privateView + " " + fromTab);
-		    	if (
-		    			( inViewName.equals(returnedviewName) && privateView.equals("false") )
-		    			|
-		    			( privateView.equals("true") && returnedviewName.startsWith("_" + inViewName.toLowerCase() + "_") )
-//		    			( ! inViewName.equals(returnedviewName) && privateView.equals("true") && returnedviewName.startsWith("_" + inViewName.toLowerCase() + "_") )
-		    			
-		    	   ) {
-//		    		if (isDebug) {
-//		    			System.out.println("ready to debug in view lineage");
-//		    		}
-		    		// case 1
-		    		String objKey = fromDB + "/" + fromTab;
-		    		System.out.println("extractViewLevelLineage should link: " + objKey);
-		    		if (datasetsScanned.contains(objKey)) {
-//		    			System.out.println("\t\t\t OK - direct link found...." + objKey);
-				    	String lefttabId = databaseName + "/" + fromDB + "/" +fromTab;
-				    	String righttabId = databaseName + "/" + dbName + "/" +viewName;
-			    		linksWriter.writeNext(new String[] {"core.DataSetDataFlow",lefttabId,righttabId});
-//			    		if (isDebug) {
-//			    			System.out.println("\t\t\twriting table level lineage: " +  lefttabId + " ==>> " + righttabId);
-//			    			System.out.println("$$$");
-//			    		}
-			    		totalTableLineage++;
-		    		} else {
-		    			// 
-		    			//System.out.println("\t\t\t probably a link to a virtual table" + objKey);	
-		    			// add to (verbose) logging (to be implemented)
-		    		}
-		    	} 
-		    }
-		} catch (SQLException e) {
-			System.out.println("sql Exception: " + e.getMessage());
-			e.printStackTrace();
-			if (doDebug && debugWriter !=null) {
-				debugWriter.println("extractViewLevelLineage - Exception" );
-				e.printStackTrace(debugWriter);
-				debugWriter.flush();
-			}
-		} catch (Exception ex) {
-			System.out.println("unknown exception found " + ex.getMessage());
-			ex.printStackTrace();
-			if (doDebug && debugWriter !=null) {
-				debugWriter.println("extractViewLevelLineage - Exception" );
-				ex.printStackTrace(debugWriter);
-				debugWriter.flush();
-			}
-		}
-
-        if (doDebug && debugWriter !=null) {
-			debugWriter.println("exiting extractViewLevelLineage(" +dbName+ ", " + viewName + ")" );
-			debugWriter.flush();
-		}
- 
-	}
-	
+	 */	
 	protected void extractViewLevelLineageRefactored(String dbName, String viewName) {
 		if (doDebug && debugWriter !=null) {
 			debugWriter.println("entering extractViewLevelLineage(" +dbName+ ", " + viewName + ")" );
 			debugWriter.flush();
 		}
 
-		System.out.println("\t\tview lineage extraction - using view_dependencies stored procedure for: " + dbName + "/" + viewName);
+//		System.out.println("\t\tview lineage extraction - using view_dependencies stored procedure for: " + dbName + "/" + viewName);
 		String query="select * " + 
 				"from   view_dependencies (?, ?)  " + 
 				"where depth=1 and view_type != 'Base View' " //+ 
@@ -984,132 +860,7 @@ public class DenodoScanner extends GenericScanner {
  
 	}
 
-	
-	/**
-	 * extact view column level lineage - internal to denodo
-	 * similar to view level lineage - but it needs to be called individually for each column
-	 * (if called with null as the column, we get results for all columns in a view - but the resultset is not accurate)
-	 * 
-	 * so there will be a lot of calls to the db - but it is the ONLY way to get the right result
-	 * 
-	 * @param dbName
-	 * @param viewName
-	 * @param columnName
-	 */
-	protected void extractViewColumnLevelLineage(String dbName, String viewName, String columnName) {
-		if (doDebug && debugWriter !=null) {
-			debugWriter.println("entering extractViewColumnLevelLineage(" +dbName+ ", " + viewName + ", " + columnName + ")" );
-			debugWriter.flush();
-		}
-//		System.out.println("view column lineage extraction - using column_dependencies stored procedure");
-		String query="select * " + 
-				"from   COLUMN_DEPENDENCIES (?, ?, ?)  " + 
-				"where depth=1 "; //+ 
-				// "order by input_view_name, view_name, column_name, view_identifier desc, depth;"
-				//;
-		if (doDebug && debugWriter !=null) {
-			debugWriter.println("extractViewColumnLevelLineage\tpreparedStatement=" + query );
-			debugWriter.flush();
-		}
-				
 
-//		System.out.println("elements scanned..." + elementsScanned.size());
-//		System.out.println(elementsScanned);
-		
-//        int recCount=0;		
-        try {
-    		PreparedStatement deps = connection.prepareStatement(query);
-    		deps.setString(1, dbName);
-			deps.setString(2, viewName);
-			deps.setString(3, columnName);
-	        ResultSet rsDeps = deps.executeQuery();
-		    while(rsDeps.next()) {
-//		    	recCount++;
-		    	String inViewName = rsDeps.getString("input_view_name");
-//		    	String toColName = rsDeps.getString("column_name");
-		    	String returnedviewName = rsDeps.getString("view_name");
-		    	String privateView = rsDeps.getString("private_view");
-//		    	String fromDB = rsDeps.getString("view_database_name");
-		    	String fromDB = rsDeps.getString("dependency_database_name");
-		    	String fromTab = rsDeps.getString("dependency_name");
-		    	String fromCol = rsDeps.getString("dependency_column_name");
-//		    	String depType = rsDeps.getString("dependency_type");
-		    	
-		    	if (  	( inViewName.equals(returnedviewName) && privateView.equals("false") )
-		    			|
-		    			( privateView.equals("true")  && returnedviewName.startsWith("_" + inViewName.toLowerCase() + "_") )   
-//		    			( ! inViewName.equals(returnedviewName) && privateView.equals("true")  && returnedviewName.startsWith("_" + inViewName.toLowerCase() + "_") )   
-		    		) {
-		    		String objKey = fromDB + "/" + fromTab + "/" + fromCol;
-		    		// if it is an actual object reference - link it
-		    		if (elementsScanned.contains(objKey)) {
-//		    			System.out.println("\t\t\tok - direct link found...." + objKey);
-				    	String leftId = databaseName + "/" + fromDB + "/" +fromTab + "/" + fromCol;
-				    	String rightId = databaseName + "/" + dbName + "/" +viewName + "/" + columnName;
-			    		linksWriter.writeNext(new String[] {"core.DirectionalDataFlow",leftId,rightId});		    			
-			    		totalColumnLineage++;
-		    		} else {
-		    			// it could be a virtual column (for a join etc, or an expression field)
-		    			// special case - for expressions the parent object might match - but the column name may be a multi-field (with a comma)
-		    			if (fromCol != null && fromCol.contains(",")) {
-		    				expressionsProcessed++;
-//		    				System.out.println("expr field...");
-		    				if (datasetsScanned.contains(fromDB + "/" + fromTab)) {
-//		    					System.out.println("split them here");
-					    		String[] exprParts = fromCol.split(",");
-					    		
-					    		//@todo refactor here - too much copy/paste of code
-					    		for (String exprPart: exprParts) {
-					    			expressionLinks++;
-//					    			System.out.println("\t\t\tlinking ...." + exprPart);
-					    			String  leftId = databaseName + "/" + fromDB + "/" +fromTab + "/" + exprPart;
-					    			String rightId = databaseName + "/" + dbName + "/" +viewName + "/" + columnName;
-						    		linksWriter.writeNext(new String[] {"core.DirectionalDataFlow",leftId,rightId});		    			
-//						    		System.out.println("\t\t\t\twriting column level lineage: " +  leftId + " ==>>> " + rightId);
-						    		totalColumnLineage++;
-					    		}
-
-		    				}
-		    				// end - is an expression reference
-		    			}  else {
-//		    				System.out.println("\t\t\tprobably a link to a virtual table column " + objKey);	
-		    			}
-		    		}
-		    	} 
-		    }
-		} catch (SQLException e) {
-			e.printStackTrace();
-			if (doDebug && debugWriter !=null) {
-				debugWriter.println("extractViewColumnLevelLineage - Exception" );
-				e.printStackTrace(debugWriter);
-				debugWriter.flush();
-			}
-		} catch (Exception ex) {
-			System.out.println("unknown exception found " + ex.getMessage());
-			ex.printStackTrace();
-			if (doDebug && debugWriter !=null) {
-				debugWriter.println("extractViewColumnLevelLineage - Exception" );
-				ex.printStackTrace(debugWriter);
-				debugWriter.flush();
-			}
-		}
- 
-		if (doDebug && debugWriter !=null) {
-			debugWriter.println("exiting extractViewColumnLevelLineage(" +dbName+ ", " + viewName + ", " + columnName + ")" );
-			debugWriter.flush();
-		}
-	}	
-	
-	/** - not used
-	private String getMappedViewNameFromMap(String from, Map<String,String> theMap) {
-		//		String actual = "";
-		while (theMap.containsKey(from)) {
-			//			System.out.println("lookup: " + from);
-			from = theMap.get(from);
-		}
-		return from;
-	}
-	*/
 	
 	static int ldepth=0;
 	
@@ -1146,7 +897,7 @@ public class DenodoScanner extends GenericScanner {
 	}
 	
 	/**
-	 * extract view column level lineage - internal to denodo, for a view (not column by column which is very slow on larger implemneations)
+	 * extract view column level lineage - internal to denodo, for a view (not column by column which is very slow on larger implementations)
 	 * similar to view level lineage -
 	 * 
 	 * @param dbName
@@ -1410,7 +1161,7 @@ public class DenodoScanner extends GenericScanner {
 //			        int numCols = 0;
 //			        long vstart = System.currentTimeMillis();
 
-					System.out.println("\t\tview=" + view);
+					System.out.print("\t\tview=" + view);
 					if (epSkipViews.contains(schema + "." + view)) {
 						System.out.println("extract view|column lineage skipped for: " + schema + "." + view);
 						if (doDebug && debugWriter !=null) {
@@ -1434,7 +1185,7 @@ public class DenodoScanner extends GenericScanner {
 //							    TimeUnit.MINUTES.toSeconds(TimeUnit.MILLISECONDS.toMinutes(totalMillis))
 //							);
 //						System.out.println("extractViewLevelLineage() time: " + timeTaken);
-						System.out.println("\t\textractViewLevelLineage() time: " + totalMillis + "ms");
+						System.out.println("\t time: " + totalMillis + "ms");
 						/**
 				    	Map<String, List<String>> tableMap = colDbNameMap.get(schema);
 				    	// # BUG Axa XL - check for nulls here - we have a case where extract view lineage fails (still troubleshooting)
@@ -1521,7 +1272,7 @@ public class DenodoScanner extends GenericScanner {
 						System.out.print("\t" + schema + "." + table + "  wrapperType=" + wrapperType);
 
 				    	Map<String, List<String>> tableMap = colDbNameMap.get(schema);
-						DataSource theDS = tableDataSources.get(schema + "." + table);
+//						DataSource theDS = tableDataSources.get(schema + "." + table);
 						Wrapper theWr = tableWrappers.get(schema + "." + table);
 
 						int custLineageCount=0;
@@ -1754,53 +1505,6 @@ public class DenodoScanner extends GenericScanner {
 
 		return initialized;
 
-		
-		/**
-		
-//		super.initFiles();
-		// assume working, until it is not
-		boolean initialized=true;
-		String outFolder = customMetadataFolder + "_lineage";
-		String lineageFileName = outFolder + "/" + "denodo_lineage.csv";
-		if (exportCustLineageInScanner) {
-			lineageFileName = customMetadataFolder + "/" + "lineage.csv";
-		}
-		System.out.println("Step 3.1: initializing denodo specific files: " + lineageFileName);
-
-		try { 
-			// check that the folder exists - if not, create it
-			File directory = new File(String.valueOf(outFolder));
-			if(!directory.exists()){
-				System.out.println("\tfolder: " + outFolder + " does not exist, creating it");
-				directory.mkdir();
-			}
-			//			otherObjWriter = new CSVWriter(new FileWriter(otherObjectCsvName), ',', CSVWriter.NO_QUOTE_CHARACTER); 
-			custLineageWriter = new CSVWriter(new FileWriter(lineageFileName)); 
-			if (exportCustLineageInScanner) {
-				custLineageWriter.writeNext(new String[]{"Association","From Connection","To Connection","From Object","To Object","com.infa.ldm.etl.ETLContext"});
-			} else {
-				custLineageWriter.writeNext(new String[]{"Association","From Connection","To Connection","From Object","To Object"});
-			}
-
-			System.out.println("\tDenodo Scanner Files initialized");
-			
-			
-			if (doDebug) {
-				debugWriter = new PrintWriter("denodoScanner_debug.txt");
-			}
-			
-
-		} catch (IOException e1) { 
-			initialized=false;
-			e1.printStackTrace(); 
-		} catch (Exception ex) {
-			System.out.println("un-known exception caught" + ex.getMessage());
-			ex.printStackTrace();
-		} 
-
-		return initialized;
-		
-		*/
 	}
 
 	/**
@@ -1945,242 +1649,32 @@ public class DenodoScanner extends GenericScanner {
 	 */
 	protected void setConnection(Connection theConnection) {
 		this.connection = theConnection;
-		
-	}
-
-    	System.out.println("\textracting producer web services - using GET_CATALOG_METADATA_WS()" );
-		int svcCount=0;
-		try {
-//			ResultSet rsViews = dbMetaData.getTables(schemaName, null, null, new String[] { "VIEW" });
-			PreparedStatement svcMetadata = null;
-			String wsQuery = "SELECT * " +
-					"FROM  WEBCONTAINER_ELEMENTS() " + 
-					"WHERE input_database_name = ?";
-			svcMetadata = connection.prepareStatement(wsQuery);
-			svcMetadata.setString(1, schemaName);
-			if (doDebug && debugWriter !=null) {
-				debugWriter.println("getProducerWebServices:\tprepared sql statement=" +wsQuery );
-				debugWriter.flush();
-			}
-
-
-	        ResultSet rsServices = svcMetadata.executeQuery();
-
-
-			// instead of calling standard jdbc - use this
-			// SELECT * FROM GET_VIEWS() WHERE input_database_name = '<catalogName>'
-			// will also return the view folder
-			
-			int viewCount = 0;
-			while (rsServices.next()) {
-				// Print
-				svcCount++;
-				// jdbc standard call returns TABLE_NAME
-				//String viewName = rsViews.getString("TABLE_NAME");
-				
-				// denodo GET_VIEWS() returns "name"
-				String producerServiceName = rsServices.getString("service_name");
-				String serviceType = rsServices.getString("service_type");
-				String serviceDesc = rsServices.getString("description");
-				String isDeployed = rsServices.getString("deployed");
-				String context  = rsServices.getString("context");
-				
-//				List<String> values = viewDbNameMap.get(schemaName);
-//				if (values==null) {
-//					values = new ArrayList<String>();
-//				}
-//				values.add(viewName);
-//				viewDbNameMap.put(schemaName, values);
-//				datasetsScanned.add(schemaName + "/" + viewName);
-				
-				WSService theService = new WSService(producerServiceName, serviceType, serviceDesc, isDeployed, context, null, null);
-
-
-				// System.out.println("found one...");
-				System.out.println("\t\t" + rsServices.getString("database_name")  + "." + producerServiceName
-						+ " service_type=" + serviceType
-						+ " context=" + context
-//						+ " comments=" + rsViews.getString("description")
-						);
-				//				System.out.println(rsTables.getMetaData().getColumnTypeName(5));
-				if (doDebug && debugWriter !=null) {
-					debugWriter.println("getProducerWebServices\t" + " catalog=" + rsServices.getString("database_name")  + " service=" + producerServiceName
-//							+ " comments=" + rsViews.getString("description")
-							);
-					debugWriter.flush();
-				}
-				
-				// get the view sql
-				/**
-				String viewSQL="desc vql view \"" + schemaName + "\".\"" + producerServiceName + "\"";
-//				PreparedStatement wrapperStmnt = null;
-//				String wrapperQuery = "DESC VQL WRAPPER JDBC ";
-				String viewSqlStmnt="";
-		        try {
-					Statement stViewSql = connection.createStatement(); 
-					ResultSet rs = stViewSql.executeQuery(viewSQL);
-					while (rs.next()) {
-//						System.out.println("\t\twrapper.....");
-//						System.out.println("view sql^^^^=" + viewSQL);
-						viewSqlStmnt = rs.getString("result");
-						
-					}
-				} catch (SQLException e) {
-					e.printStackTrace();
-				}
-				
-				*/
-				
-				
-//				this.createView(catalogName, schemaName, viewName, rsViews.getString("description"), viewSqlStmnt, rsViews.getString("folder"));
-				
-				// for denodo - we want to document the expression formula for any calculated fields
-				// so for this table - we will store in memory - 
-//				storeTableColExpressions(schemaName, viewName);
-
-
-				getColumnsForDeployedService(catalogName, schemaName, producerServiceName, theService);
-			}
-			System.out.println("\tServices (producer) extracted: " + svcCount);
-			
-			// collect for later 0 tge 
-
-		} catch (SQLException e) {
-			e.printStackTrace();
-			if (doDebug && debugWriter !=null) {
-				debugWriter.println("getViews - Exception" );
-				e.printStackTrace(debugWriter);
-				debugWriter.flush();
-			}
-		} catch (Exception ex) {
-			System.out.println("un-known exception caught" + ex.getMessage());
-			ex.printStackTrace();
-			if (doDebug && debugWriter !=null) {
-				debugWriter.println("getViews - Exception" );
-				ex.printStackTrace(debugWriter);
-				debugWriter.flush();
-			}
-		}
-		if (doDebug && debugWriter !=null) {
-			debugWriter.println("exiting getProducerWebServices(" +catalogName+ ", " + schemaName + ")" );
-			debugWriter.flush();
-		}
-
 	}
 	
+
 	/**
-	 * get the operations and input/output fields for a service
-	 * @param catalogName
-	 * @param schemaName
-	 * @param serviceName
+	 * create a table object - with columns for sql statement & location 
+	 * @param dbName
+	 * @param schema
+	 * @param table
+	 * @param desc
+	 * @param sql
+	 * @param location
 	 */
-	protected void 	getColumnsForDeployedService(String catalogName, String schemaName, String serviceName, WSService serviceObj) {
-		if (doDebug && debugWriter !=null) {
-			debugWriter.println("entering getColumnsForDeployedService(" +catalogName+ ", " + schemaName+ ", " + serviceName);
-			debugWriter.flush();
-		}
-//		Set<String> operations = new HashSet<String>();
-    	int colCount=0;
-    	try {
-    		// Note:  alternate select * from get_view_columns ('policy_asset', 'policy_asset'); - where order will be correct (derive pos)
-    		// Note:  if any denodo objects have a $ in the name, the standard JDBC getColumns call will return no rows
-    		//        so we need to use CATALOG_VDP_METADATA_VIEWS()
-    		//		    ResultSet columns = dbMetaData.getColumns(schemaName, null, tableName, null);
-		    
-			PreparedStatement svcColumns = null;
-			String viewColumnQRY = "select * from GET_CATALOG_METADATA_WS() " +
-					"WHERE input_database_name = ? AND input_ws_name  = ?";
-			svcColumns = connection.prepareStatement(viewColumnQRY);
-			svcColumns.setString(1, schemaName);
-			svcColumns.setString(2, serviceName);
-//			System.out.println("executing query" + viewColumnQRY + " passing:" + schemaName + " and " + tableName);
-			ResultSet rsSvcColumns = svcColumns.executeQuery();
-			int aColCount = 0;
-			while (rsSvcColumns.next()) {
-				aColCount++;
-				String operationName = rsSvcColumns.getString("operation_name");
-				String columnName = rsSvcColumns.getString("column_name");
-                String typeName = rsSvcColumns.getString("column_type_name");
-//                String wsName = rsSvcColumns.getString("ws_name");   // will match service name - so not needed
-                String pos = Integer.toString(aColCount);
-                String isInput = rsSvcColumns.getString("input");
-                String isOutput = rsSvcColumns.getString("output");
-                String mandatory = rsSvcColumns.getString("mandatory");
-                String operator = rsSvcColumns.getString("operator");
-                String operationType = rsSvcColumns.getString("operation_type");
-                aColCount = aColCount+0;
-                
-                serviceObj.addField(operationName, columnName, typeName, isInput, isOutput, mandatory, operator, operationType);
-                
-//                if (!operations.contains(operationName)) {
-//                	System.out.println("\toperation: " + operationName);
-//                	operations.add(operationName);
-//                }
-//				System.out.println("column found...")
-//			}
-//			System.out.println("columns really found = " + aColCount);
-			
-//		    while(columns.next()) {
-		    	colCount++;
-                
-                String colKey = schemaName + "/" + serviceName + "/" + columnName;
-                
-                // store the list of columns - for linking later
-//                elementsScanned.add(colKey);
-                              
-        		if (doDebug && debugWriter !=null) {
-        			debugWriter.println("getColumnsForDeployedService\t\tcolumnn=" + catalogName + "/" + schemaName + "/" + serviceName+ "/" + columnName+ "/" + typeName+ "/"  + pos);
-        			debugWriter.flush();
-        		}
+	public void createTableWithSQL(String dbName, String schema, String table, String desc, String sql, String location)  {
 
-        		/**
-//        		createColumn( );
-//               	this.createColumn(catalogName, schemaName, tableName, columnName, typeName, columnsize, pos, comments, isView);
-                
-                // add to name mapping
-//                if (!isView) {
-                	Map<String, List<String>> schemaMap = colDbNameMap.get(schemaName);
-    				if (schemaMap==null) {
-    					schemaMap = new HashMap<String, List<String>>();
-    					colDbNameMap.put(schemaName, schemaMap);
-    				}
-    				
-    				// check the table is in the schema map
-    				List<String> cols = schemaMap.get(serviceName);
-    				if (cols==null) {
-    					// add a new list of columns
-    					cols = new ArrayList<String>();
-    					schemaMap.put(serviceName, cols);
-    					
-    				}
-    				cols.add(columnName);
-//                }
+		String schId = dbName + "/" + schema;
+		String tabId = schId + "/" + table;
 
-        		 */
+		try {
+			this.tableWriter.writeNext(new String[] {TAB_TYPE,tabId,table,desc,sql,location});
+			tabCount++;
+			this.linksWriter.writeNext(new String[] {"com.infa.ldm.relational.SchemaTable",schId,tabId});
+		} catch (Exception ex) {
+			ex.printStackTrace();
+		} 
 
-                		
-		    }  // end for each column
-    	} catch (Exception ex) {
-    		System.out.println("error extracting column metadata...");
-    		ex.printStackTrace();
-			if (doDebug && debugWriter !=null) {
-				debugWriter.println("getColumnsForTable - Exception" );
-				ex.printStackTrace(debugWriter);
-				debugWriter.flush();
-			}
-    	}
-	    System.out.println(" columns: " + colCount + " operations=" + serviceObj.countOperations());
-	    if (colCount==0) {
-	    	System.out.println("why 0 cols??");
-	    }
-
-	    if (doDebug && debugWriter !=null) {
-			debugWriter.println("exiting getColumnsForDeployedService(" +catalogName+ ", " + schemaName+ ", " + serviceName + ")" );
-			debugWriter.flush();
-		}
-
-		
+		return;
 	}
-
 
 }
