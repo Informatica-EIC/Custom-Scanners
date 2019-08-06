@@ -11,6 +11,9 @@ Version History/Changes for Denodo Scanner
   this is used to extract custom lineage for non JDBC/ODBC sources
 - custom lineage for jdbc - now using correct column name from wrapper definition
   (was assuming column names were the same as what is used in the denodo base view)
+- view sql statements were including all dependent views and datasource/wrappers
+  only the definition for the view is stored now - reducing any truncation messages during import
+  
   
 Known Limitations:
 1.	custom lineage is not possible for base views using SQL statements
