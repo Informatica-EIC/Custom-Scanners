@@ -1,5 +1,8 @@
 Version History/Changes for Denodo Scanner
 ------------------------------------------
+2019/08/08 - v0.9.8.1
+- bugfix - lineage.csv had single quotes for columns in some situations
+
 2019/08/05 - v0.9.8
 - custom for delimited files (wrapper type=DF) created
 - sql over-rides for base views (tables) is captured using com.infa.ldm.relational.ViewStatement

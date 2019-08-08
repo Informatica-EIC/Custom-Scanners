@@ -176,7 +176,7 @@ public class Wrapper {
 					} 
 //					System.out.println(matchList);
 					if (matchList.size()>=3) {
-						this.outputSchema.put(matchList.get(0).replaceAll("\"", "").replaceAll("\"", ""), matchList.get(2).trim().replaceAll("\"", "").replaceAll("\"", ""));
+						this.outputSchema.put(matchList.get(0).replaceAll("\"", "").replaceAll("'", ""), matchList.get(2).trim().replaceAll("\"", "").replaceAll("'", ""));
 						
 					}
 
