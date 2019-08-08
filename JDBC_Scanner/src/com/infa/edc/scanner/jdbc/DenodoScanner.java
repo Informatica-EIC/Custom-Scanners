@@ -26,7 +26,7 @@ import java.sql.Connection;
 import com.opencsv.CSVWriter;
 
 public class DenodoScanner extends GenericScanner {
-	public static final String version="0.9.8";
+	public static final String version="0.9.8.1";
 	
 	protected static String DISCLAIMER="\n************************************ Disclaimer *************************************\n"
 			 + "By using the Denodo scanner, you are agreeing to the following:-\n"
@@ -1392,9 +1392,6 @@ public class DenodoScanner extends GenericScanner {
 		String wrapperType="";
 		Wrapper theWrapper=null;
 		
-		if (table.equals("camstar_ccfKitWorkOrderHistory")) {
-			System.out.println("endless loop???");
-		}
 		// note - some tables have mixed case characters in the name - like ILMN.P2P/PurchaseOrderDetail_QV  (Hana)
 		String viewSQL="desc vql view \"" + catalog + "\".\"" + table + "\"";
 //		PreparedStatement wrapperStmnt = null;
