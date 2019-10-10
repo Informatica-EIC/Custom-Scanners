@@ -26,7 +26,7 @@ import java.sql.Connection;
 import com.opencsv.CSVWriter;
 
 public class DenodoScanner extends GenericScanner {
-	public static final String version="0.9.8.1";
+	public static final String version="0.9.8.2";
 	
 	protected static String DISCLAIMER="\n************************************ Disclaimer *************************************\n"
 			 + "By using the Denodo scanner, you are agreeing to the following:-\n"
@@ -72,6 +72,10 @@ public class DenodoScanner extends GenericScanner {
 	
 	protected boolean doDebug = false;
 	protected boolean exportCustLineageInScanner = false;
+	
+	// schema to schema links
+	Set<String> schemaSchemaLinks = new HashSet<String>();
+
 
 	public DenodoScanner(String propertyFile) {
 		super(propertyFile);
@@ -523,16 +527,25 @@ public class DenodoScanner extends GenericScanner {
 						// @todo @important - get the wrapper typoe (DF JDBC WF ...
 						
 						String createStr = "CREATE " + viewTypeName + " " + viewName;
-						if (!viewName.toLowerCase().equals(viewName) | viewName.contains(".") | viewName.contains("$") | viewName.contains("/") | viewName.contains("-") ) {
+						// @todo - rewrite to use regex - looking for surrounding quotes or not
+						if (!viewName.toLowerCase().equals(viewName) | viewName.contains(".") 
+								| viewName.contains("$") | viewName.contains("/") 
+								| viewName.contains("-") | viewName.contains("+") ) {
 							// there are mixed case characters - surround with "
 							createStr = "CREATE " + viewTypeName + " \"" + viewName + "\"";
 						}
 						int dsStart = viewSqlStmnt.indexOf(createStr);
 //						System.out.println("start pos=" + dsStart + " total length=" + viewSqlStmnt.length());
 						if (dsStart > -1) {
-							int dsEnd = viewSqlStmnt.indexOf(");\n", dsStart);
+//							int dsEnd = viewSqlStmnt.indexOf(");\n", dsStart);
+							int dsEnd = viewSqlStmnt.indexOf(";\n", dsStart);
 //							System.out.println("start end=" + dsEnd + " total length=" + viewSqlStmnt.length());
-							viewSqlStmnt = viewSqlStmnt.substring(dsStart, dsEnd+3);
+//							viewSqlStmnt = "";
+							try {
+								viewSqlStmnt = viewSqlStmnt.substring(dsStart, dsEnd+3);
+							} catch (Exception ex) {
+								
+							}
 //							System.out.println(viewSqlStmnt);
 						} else {
 							// store the whole string
@@ -737,6 +750,7 @@ public class DenodoScanner extends GenericScanner {
 //		System.out.println("structs scanned..." + datasetsScanned.size());
 //		System.out.println(datasetsScanned);
     	Map<String, List<String>> vcache = new HashMap<String, List<String>>();
+    	
 
 		
 //        int recCount=0;		
@@ -821,6 +835,15 @@ public class DenodoScanner extends GenericScanner {
 //					    			System.out.println("$$$");
 //					    		}
 					    		totalTableLineage++;
+					    		
+					    		String schemaSchemaKey = databaseName + "/" + leftDB + ":" + databaseName + "/" + dbName;
+					    		String leftSchema = databaseName + "/" + leftDB;
+					    		String rightSchema = databaseName + "/" + dbName;
+					    		if (!schemaSchemaLinks.contains(schemaSchemaKey) && ! leftSchema.equals(rightSchema) ) {
+					    			schemaSchemaLinks.add(schemaSchemaKey);
+					    			linksWriter.writeNext(new String[] {"core.DataSourceDataFlow",databaseName + "/" + leftDB, databaseName + "/" + dbName});
+//					    			System.out.println("schema link ++++ " + schemaSchemaKey);
+					    		}
 				    		} else {
 				    			System.out.println("\t\textractViewLevelLineageRefactored lookup not found: " + objKey);
 				    			// log it???
@@ -857,6 +880,8 @@ public class DenodoScanner extends GenericScanner {
 			debugWriter.println("exiting extractViewLevelLineage(" +dbName+ ", " + viewName + ")" );
 			debugWriter.flush();
 		}
+        
+//        System.out.println("schemaSchemaLinks=" + schemaSchemaLinks);
  
 	}
 
@@ -1532,6 +1557,8 @@ public class DenodoScanner extends GenericScanner {
 		if (tablesWithSQL.size()>0) {
 			System.out.println(tablesWithSQL);
 		}
+		System.out.println("schema to schema links: " + schemaSchemaLinks.size());
+		System.out.println(schemaSchemaLinks);
 		
 		// we can';t call the superclass to close files - since it also zips 
 		//		super.closeFiles();

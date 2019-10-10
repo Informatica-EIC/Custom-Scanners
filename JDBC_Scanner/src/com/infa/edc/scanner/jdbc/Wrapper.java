@@ -109,17 +109,20 @@ public class Wrapper {
 		boolean isSqlSentence = false;
 		for (String aLine: lines) {
 			if (aLine.startsWith("CREATE WRAPPER")) {
-				String[] tokens = aLine.substring(15).trim().split(" ");
-				if (tokens.length>=2) {
-					this.type = tokens[0];
-					this.name = tokens[1].replaceAll("\"", "");
-										
-					// check that the object aready exists (& return it)
+				String dsPattern = "CREATE\\s(?:OR REPLACE\\s)?WRAPPER\\s(\\w+)\\s\\\"?(.*)\\\"?\\b";
+				Pattern regex = Pattern.compile(dsPattern);				                                
+				Matcher regexMatcher = regex.matcher(aLine);
+				if (regexMatcher.find() && regexMatcher.groupCount() ==2) {
+					this.type = regexMatcher.group(1);
+					this.name = regexMatcher.group(2);
 					if (cache.containsKey(inDatabase +"." + this.name)) {
 						System.out.println("cached entry for wrapper: " + inDatabase +"." + this.name);
 						return cache.get(inDatabase +"." + this.name);
 					}
+				} else {
+					System.out.println("Error:  unable to extract connection name from: " + aLine + " groupcount != 2, using regex=" + dsPattern);
 				}
+				
 				// end of CREATE WRAPPER
 			} else if (aLine.trim().startsWith("FOLDER = ")) {
 				String[] tokens = aLine.trim().substring(10).trim().split("'");
@@ -196,6 +199,8 @@ public class Wrapper {
 
 		
 		Wrapper.cache.put(inDatabase + "." + this.name, this);
+		
+		
 //		System.out.println("returning wrapper with " + this.name + " type=" + this.type + " in " + inDatabase + " with:" + this.outputSchema.size() + " fields" );
 		return this;
 	}
@@ -203,7 +208,12 @@ public class Wrapper {
 	
 	protected int writeLineage(CSVWriter lineageWriter, String toDB, String toSch, String toTab, List<String> columns, boolean exportCustLineageInScanner) {
 		int custLineageCount = 0;
-		String connectionName = toSch + "." + dataSourceObj.getName() + ":" + dataSourceObj.getType();
+		String connectionName = "";
+		if (dataSourceObj != null) {
+			connectionName = toSch + "." + dataSourceObj.getName() + ":" + dataSourceObj.getType();
+		} else {
+			System.out.println("dataSourceObj is null");
+		}
 
 		if (this.type.equals("JDBC") | this.type.equals("ODBC")) {
 			
