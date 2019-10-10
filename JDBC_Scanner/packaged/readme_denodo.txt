@@ -1,5 +1,15 @@
 Version History/Changes for Denodo Scanner
 ------------------------------------------
+2019/10/10 - v0.9.8.2
+- bugfix #26 - views with a + character in the name were not processed properly
+- bugfix #25 - datasource and wrapper objects with spaces in the name were not stored properly, lineage would be missing for views based on these objects
+               regex patterns are used to extract the datasource & wrapper names
+- bugfix #24 - extracting the vql (create statement) for some views failed to find the end of a view definitions ";" character.  previous versions were looking for );\n 
+               the fixed version only looks for ;\n
+- new feature - denodo database to database (schemas in the EDC relational model) are now linked via core.DataSetDataFlow relationship
+                Note:  recursive relationships (where views are based on other views/tables in the same database) are not stored (can clutter the schema lineage diagram)
+
+
 2019/08/08 - v0.9.8.1
 - bugfix - lineage.csv had single quotes for columns in some situations
 

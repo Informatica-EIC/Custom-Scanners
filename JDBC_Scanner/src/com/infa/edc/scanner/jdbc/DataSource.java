@@ -35,6 +35,7 @@ public class DataSource {
 	private List<String> unhandled;
 	private String httpAction;
 	private String url;
+	private String className;
 	
 	/**
 	 * cache for storing all datasources // refactor to a generic cache class?
@@ -108,6 +109,10 @@ public class DataSource {
 		return vql;
 	}
 	
+	String getClassName() {
+		return className;
+	}
+	
 	static DataSource getDataSource(String key) {
 		return cache.get(key);
 	}
@@ -125,22 +130,24 @@ public class DataSource {
 		// extract the datasource details
 		// split by newline
 		String[] lines =  datasourceDef.split("\n");
-//		System.out.println("lines=" + lines.length);
-//		System.out.println("filter conditions for catalog " + catalogs);
 		for (String aLine: lines) {
 //			System.out.println("line=" + aLine);
 			if (aLine.startsWith("CREATE DATASOURCE")) {
-				String[] tokens = aLine.substring(17).trim().split(" ");
-				if (tokens.length>=2) {
-					this.type = tokens[0];
-					this.name = tokens[1].replaceAll("\"", "");
-					
-					// check that the object aready exists (& return it)
+				String dsPattern = "CREATE\\s(?:OR REPLACE\\s)?DATASOURCE\\s(\\w+)\\s\\\"?(.*)\\\"?\\b";
+				Pattern regex = Pattern.compile(dsPattern);				                                
+				Matcher regexMatcher = regex.matcher(aLine);
+				if (regexMatcher.find() && regexMatcher.groupCount() ==2) {
+					this.type = regexMatcher.group(1);
+					this.name = regexMatcher.group(2);
 					if (cache.containsKey(inDatabase +"." + this.name)) {
 						System.out.println("cached entry for datasource: " + inDatabase +"." + this.name);
 						return cache.get(inDatabase +"." + this.name);
 					}
+
+				} else {
+					System.out.println("Error:  unable to extract connection name from: " + aLine + " groupcount != 2, using regex=" + dsPattern);
 				}
+
 				// end of CREATE DATASOURCE
 			} else if (aLine.trim().startsWith("FOLDER = ")) {
 				String[] tokens = aLine.trim().substring(10).trim().split("'");
@@ -212,6 +219,13 @@ public class DataSource {
 					this.header = tokens[0];
 				}
 				// end of HEADER
+			} else if (aLine.trim().startsWith("CLASSNAME=")) {
+				Pattern regex = Pattern.compile("CLASSNAME=\\'(.*)\\'");
+				Matcher regexMatcher = regex.matcher(aLine);
+				if (regexMatcher.find() && regexMatcher.groupCount() ==1) {
+					this.className = regexMatcher.group(1);					
+				}
+
 			} else {
 				// un-handled entry (this is ok - but probably good to log it in debug mode
 				unhandled.add(aLine);
