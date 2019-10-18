@@ -26,7 +26,7 @@ import java.sql.Connection;
 import com.opencsv.CSVWriter;
 
 public class DenodoScanner extends GenericScanner {
-	public static final String version="0.9.8.2";
+	public static final String version="0.9.8.3";
 	
 	protected static String DISCLAIMER="\n************************************ Disclaimer *************************************\n"
 			 + "By using the Denodo scanner, you are agreeing to the following:-\n"
@@ -75,6 +75,8 @@ public class DenodoScanner extends GenericScanner {
 	
 	// schema to schema links
 	Set<String> schemaSchemaLinks = new HashSet<String>();
+	
+	protected int descVQLErrors = 0;
 
 
 	public DenodoScanner(String propertyFile) {
@@ -283,7 +285,16 @@ public class DenodoScanner extends GenericScanner {
 
 					}
 				} catch (SQLException e) {
-					e.printStackTrace();
+					descVQLErrors++;
+					System.out.println("collectDataSourcesforSchema: error executing query: " + viewSQL + "\n\t" + e.getMessage());
+					if (doDebug && debugWriter !=null) {
+						debugWriter.println("collectDataSourcesforSchema: error executing query: " + viewSQL + "\n\t" + e.getMessage());
+						debugWriter.println("collectDataSourcesforSchema - Exception" );
+						e.printStackTrace(debugWriter);
+						debugWriter.flush();
+					}
+
+//					e.printStackTrace();
 				}
 
 //				System.out.println("\treading datasource: " + aSchema + "." + dsName + " type=" + dsType);
@@ -558,7 +569,16 @@ public class DenodoScanner extends GenericScanner {
 						///}
 					}
 				} catch (SQLException e) {
-					e.printStackTrace();
+					descVQLErrors++;
+					System.out.println("getViews: error executing query: " + viewSQL + "\n\t" + e.getMessage());
+					if (doDebug && debugWriter !=null) {
+						debugWriter.println("getViews: error executing query: " + viewSQL + "\n\t" + e.getMessage());
+						debugWriter.println("getViews - Exception" );
+						e.printStackTrace(debugWriter);
+						debugWriter.flush();
+					}
+
+//					e.printStackTrace();
 				}
 
 				
@@ -1379,8 +1399,11 @@ public class DenodoScanner extends GenericScanner {
 				}
 			}
 		} catch (SQLException e) {
-			e.printStackTrace();
+			descVQLErrors++;
+			System.out.println("getConnectionNameFromWrapper: error executing query: " + query + "\n\t" + e.getMessage());
+//			e.printStackTrace();
 			if (doDebug && debugWriter !=null) {
+				debugWriter.println("getConnectionNameFromWrapper: error executing query: " + query + "\n\t" + e.getMessage());
 				debugWriter.println("getConnectionNameFromWrapper - Exception" );
 				e.printStackTrace(debugWriter);
 				debugWriter.flush();
@@ -1447,8 +1470,15 @@ public class DenodoScanner extends GenericScanner {
 	
 			}
 		} catch (SQLException e) {
-			System.out.println("ERROR: exception found when extracting wrapper for table: " + catalog + "." + table);
-			e.printStackTrace();
+			System.out.println("ERROR: extractWrapper - exception found when extracting wrapper for table: " + catalog + "." + table);
+			if (doDebug && debugWriter !=null) {
+				debugWriter.println("extractWrapper: error executing query: " + viewSQL + "\n\t" + e.getMessage());
+				debugWriter.println("extractWrapper - Exception" );
+				e.printStackTrace(debugWriter);
+				debugWriter.flush();
+			}
+
+//			e.printStackTrace();
 		}
 
 		return theWrapper;
@@ -1559,6 +1589,7 @@ public class DenodoScanner extends GenericScanner {
 		}
 		System.out.println("schema to schema links: " + schemaSchemaLinks.size());
 		System.out.println(schemaSchemaLinks);
+		System.out.println("desc vql errors: " + descVQLErrors);
 		
 		// we can';t call the superclass to close files - since it also zips 
 		//		super.closeFiles();

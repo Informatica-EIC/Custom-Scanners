@@ -1,5 +1,20 @@
 Version History/Changes for Denodo Scanner
 ------------------------------------------
+
+2019/10/18 - v0.9.8.3
+- bugfix #28 - gracefully capture the following error:
+					java.sql.SQLException: The user does not have WRITE privileges on ...
+               modified the code to catch these errors and print an error summary (no stack trace) to the console (& debug log)
+
+               Note 1:  this should not affect any relational (JDBC/ODBC) datasources.  however for datafile (DF) datasources
+                        and 
+                        it means that lineage back to the filesystem objects will be missing
+               Note 2:  this is a restriction with Denodo (so not a scanner bug) 
+                        where WRITE privileges are required to view the VQL for 
+                        Data sources, derived views, base views, stored procedures, JMS listeners, web services and widgets
+                        https://community.denodo.com/docs/html/browse/7.0/vdp/administration/databases_users_and_access_rights_in_virtual_dataport/user_and_access_right_in_virtual_dataport/user_and_access_right_in_virtual_dataport
+
+
 2019/10/10 - v0.9.8.2
 - bugfix #26 - views with a + character in the name were not processed properly
 - bugfix #25 - datasource and wrapper objects with spaces in the name were not stored properly, lineage would be missing for views based on these objects
