@@ -26,7 +26,7 @@ import java.sql.Connection;
 import com.opencsv.CSVWriter;
 
 public class DenodoScanner extends GenericScanner {
-	public static final String version="0.9.8.3";
+	public static final String version="0.9.8.4";
 	
 	protected static String DISCLAIMER="\n************************************ Disclaimer *************************************\n"
 			 + "By using the Denodo scanner, you are agreeing to the following:-\n"
@@ -339,51 +339,64 @@ public class DenodoScanner extends GenericScanner {
 				
 				String tableName=rsTables.getString("TABLE_NAME");
 				String comment = rsTables.getString("REMARKS");
-//				String tableName = rsTables.getString("name");
-//				String comment = rsTables.getString("description");
-				String folder  = "";
-//				String folder = rsTables.getString("folder");
-				
-				List<String> values = tableDbNameMap.get(schemaName);
-				if (values==null) {
-					values = new ArrayList<String>();
-				}
-				values.add(tableName);
-				tableDbNameMap.put(schemaName, values);
-				datasetsScanned.add(schemaName + "/" + tableName);
-				
-				// get the wrapper type for the table (could be FF, JDBC, WS and some others)
-				// this is important for the external lineage for the objects...
-				Wrapper tableWrapper = extractWrapper(schemaName, tableName);
-//				String wrapperType = extractWrapperType(schemaName, tableName);
+				try {
+					// note:  folder does not come back from jdbc getMetadata (refactor?)
+					String folder  = "";
+//					String folder = rsTables.getString("folder");
+					
+					List<String> values = tableDbNameMap.get(schemaName);
+					if (values==null) {
+						values = new ArrayList<String>();
+					}
+					values.add(tableName);
+					tableDbNameMap.put(schemaName, values);
+					datasetsScanned.add(schemaName + "/" + tableName);
+					
+					// get the wrapper type for the table (could be FF, JDBC, WS and some others)
+					// this is important for the external lineage for the objects...
+					Wrapper tableWrapper = extractWrapper(schemaName, tableName);
+					String wrapperType="";
+					String wrapperSQL="";
 
-
-				// System.out.println("found one...");
-				System.out.print("\t\t" + schemaName //+ " schema="
-						//+ rsTables.getString("TABLE_SCHEM") 
-						+ "." + tableName
-//						+ " comments=" + rsTables.getClob("REMARKS") 
-						+ " wrapperType=" + tableWrapper.getType()
-						);
-				if (doDebug && debugWriter !=null) {
-					debugWriter.println("getTables\t" + " catalog=" + schemaName + " schema="
-							+ schemaName + " tablename=" + tableName
-//							+ " TABLE_TYPE=" + rsTables.getString("view_type")
-//							+ " comments=" + rsTables.getClob("REMARKS")
+					if (tableWrapper!=null) {
+						wrapperType = tableWrapper.getType();
+						wrapperSQL = tableWrapper.getSqlSentance();
+						if (wrapperSQL == null) {
+							wrapperSQL = "";
+						}
+						folder = tableWrapper.getFolder();
+					}
+	
+					// System.out.println("found one...");
+					System.out.print("\t\t" + schemaName //+ " schema="
+							//+ rsTables.getString("TABLE_SCHEM") 
+							+ "." + tableName
+	//						+ " comments=" + rsTables.getClob("REMARKS") 
+							+ " wrapperType=" + wrapperType
 							);
+					if (doDebug && debugWriter !=null) {
+						debugWriter.println("getTables\t" + " catalog=" + schemaName + " schema="
+								+ schemaName + " tablename=" + tableName
+	//							+ " TABLE_TYPE=" + rsTables.getString("view_type")
+	//							+ " comments=" + rsTables.getClob("REMARKS")
+								);
+					}
+					
+					if (! wrapperSQL.equals("")) {
+						tablesWithSQL.add(schemaName  + "." + tableName);
+					}
+	
+	//				System.out.println(rsTables.getMetaData().getColumnTypeName(5));
+					this.createTableWithSQL(catalogName, schemaName, tableName, comment, wrapperSQL, folder);
+	//				this.createTable(catalogName, schemaName, tableName, comment);
+					
+	//				System.out.println("calling get columns.."  + tableCount);
+					this.getColumnsForTable(catalogName, schemaName, tableName, false);
+	//				System.out.println("called  get columns.." + tableCount + " hasnext:" + rsTables.isLast());
+				} catch (Exception ex) {
+					System.out.println("Error processing table: " + tableName + " from " + schemaName + " metadata and lineage will be missing.\n" + ex.getMessage() + "\n");
+					ex.printStackTrace();
 				}
-				
-				if (tableWrapper.getSqlSentance() != null) {
-					tablesWithSQL.add(schemaName  + "." + tableName);
-				}
-
-//				System.out.println(rsTables.getMetaData().getColumnTypeName(5));
-				this.createTableWithSQL(catalogName, schemaName, tableName, comment, tableWrapper.getSqlSentance(), folder);
-//				this.createTable(catalogName, schemaName, tableName, comment);
-				
-//				System.out.println("calling get columns.."  + tableCount);
-				this.getColumnsForTable(catalogName, schemaName, tableName, false);
-//				System.out.println("called  get columns.." + tableCount + " hasnext:" + rsTables.isLast());
 			}
 			System.out.println("\tTables extracted: " + tableCount);
 //			System.out.println(this.tableWrapperTypes);
@@ -1470,7 +1483,7 @@ public class DenodoScanner extends GenericScanner {
 	
 			}
 		} catch (SQLException e) {
-			System.out.println("ERROR: extractWrapper - exception found when extracting wrapper for table: " + catalog + "." + table);
+			System.out.println("ERROR: extractWrapper - exception found when extracting wrapper for table: " + catalog + "." + table + " " + e.getMessage());
 			if (doDebug && debugWriter !=null) {
 				debugWriter.println("extractWrapper: error executing query: " + viewSQL + "\n\t" + e.getMessage());
 				debugWriter.println("extractWrapper - Exception" );

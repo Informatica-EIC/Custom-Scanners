@@ -1,6 +1,10 @@
 Version History/Changes for Denodo Scanner
 ------------------------------------------
 
+2019/10/25 - v0.9.8.4
+- bugfix #32 NullPointerException after error in extractWrapper
+- location property is now written for Tables with the denodo folder location (missing before), was only stored for views before
+
 2019/10/18 - v0.9.8.3
 - bugfix #28 - gracefully capture the following error:
 					java.sql.SQLException: The user does not have WRITE privileges on ...
