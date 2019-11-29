@@ -26,7 +26,7 @@ import java.sql.Connection;
 import com.opencsv.CSVWriter;
 
 public class DenodoScanner extends GenericScanner {
-	public static final String version="0.9.8.4";
+	public static final String version="0.9.8.5";
 	
 	protected static String DISCLAIMER="\n************************************ Disclaimer *************************************\n"
 			 + "By using the Denodo scanner, you are agreeing to the following:-\n"
@@ -1208,6 +1208,10 @@ public class DenodoScanner extends GenericScanner {
 		}
 		System.out.println("");
 		System.out.println("Denodo specific processing - extracting view lineage...");
+		
+		// hack - reset tablewrappertypes  - simulate objects that return null for lookup (permission related in denodo)
+//		tableWrapperTypes.clear();
+//		tableWrappers.clear();
 
 		try {
 			// for each schema - then view...
@@ -1230,59 +1234,13 @@ public class DenodoScanner extends GenericScanner {
 					} else {
 				        long start = System.currentTimeMillis();
 				        // call the view level lineage extraction
-//						this.extractViewLevelLineage(schema, view);	
 						this.extractViewLevelLineageRefactored(schema, view);	
 						
 						this.extractViewColumnLevelLineageRefactored(schema, view);
 				        
 						long end1 = System.currentTimeMillis();		
 						long totalMillis = end1-start;
-//						String timeTaken = 	String.format("%d min, %d sec", 
-//							    TimeUnit.MILLISECONDS.toMinutes(totalMillis),
-//							    TimeUnit.MILLISECONDS.toSeconds(totalMillis) - 
-//							    TimeUnit.MINUTES.toSeconds(TimeUnit.MILLISECONDS.toMinutes(totalMillis))
-//							);
-//						System.out.println("extractViewLevelLineage() time: " + timeTaken);
 						System.out.println("\t time: " + totalMillis + "ms");
-						/**
-				    	Map<String, List<String>> tableMap = colDbNameMap.get(schema);
-				    	// # BUG Axa XL - check for nulls here - we have a case where extract view lineage fails (still troubleshooting)
-				    	if (tableMap == null) {
-				    		System.out.println("column level lineage not possible for view : " + schema + "." + view + " tableMap==null");
-							if (doDebug && debugWriter !=null) {
-								debugWriter.println("\tcolumn level lineage not possible for view : " + schema + "." + view +  " tableMap==null");
-								debugWriter.flush();
-							}
-				    		
-				    	} else {
-							if (doDebug && debugWriter !=null) {
-								debugWriter.println("\ttableMap values used for view=" + view + " is: " + tableMap.get(view));
-								debugWriter.flush();
-							}
-				    		
-							try {
-						    	for (String col : tableMap.get(view)) {
-						    		numCols++;
-							        start = System.currentTimeMillis();		
-									this.extractViewColumnLevelLineage(schema, view, col);
-									long end2 = System.currentTimeMillis();
-									totalMillis = end2-start;
-									System.out.println("extractViewColumnLevelLineage() time: " + totalMillis + " ms");
-
-						    	}
-							} catch (Exception ex) {
-								System.out.println("exception found for columns for " + view + " in extraProcessing.  view/column lineage will not be possible");
-								ex.printStackTrace();
-								if (doDebug && debugWriter !=null) {
-									debugWriter.println("\texception found for columns for " + view + " in extraProcessing.  view/column lineage will not be possible");
-									ex.printStackTrace(debugWriter);
-									debugWriter.flush();
-									
-								}
-
-							}
-				    	}  // end of column level processing (each individual column for a view
-				    	*/
 					}
 
 				} // each view
@@ -1326,6 +1284,9 @@ public class DenodoScanner extends GenericScanner {
 					} else {
 
 						// only process if the wrapper type is JDBC (skip for others)
+						// Note:  if the user does not have WRITE privileges, we can't extract the vql code (for the wrapper & datasource)
+						//        in that case the wrapperType & wrapper object will be null
+						//        catch this and move on - it will mean there is no lineage generated until we get privileges or denodo let us know another way
 						String wrapperType = this.tableWrapperTypes.get(schema + "." + table);
 						System.out.print("\t" + schema + "." + table + "  wrapperType=" + wrapperType);
 
@@ -1334,9 +1295,10 @@ public class DenodoScanner extends GenericScanner {
 						Wrapper theWr = tableWrappers.get(schema + "." + table);
 
 						int custLineageCount=0;
-						custLineageCount += theWr.writeLineage(custLineageWriter,databaseName, schema, table, tableMap.get(table), exportCustLineageInScanner);
-						allCustLineageCount += custLineageCount;
-						
+						if (theWr != null) {
+							custLineageCount += theWr.writeLineage(custLineageWriter,databaseName, schema, table, tableMap.get(table), exportCustLineageInScanner);
+							allCustLineageCount += custLineageCount;
+						}
 						System.out.println(" " + custLineageCount + " lineage links exported");
 					}
 		
