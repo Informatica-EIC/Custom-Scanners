@@ -26,6 +26,7 @@ Since Denodo is a virtual layer - we also need to generate the lineage links bac
 <img src="images/denodo_scanner_overview.png">
 
 
+
 ## Download the Scanner - from Github
 
 you can download from this link https://github.com/Informatica-EIC/Custom-Scanners/blob/master/Denodo_Scanner/packaged/DenodoScanner.zip?raw=true
@@ -36,6 +37,7 @@ wget -O DenodoScanner.zip https://github.com/Informatica-EIC/Custom-Scanners/blo
 ```
 
 unzip the DenodoScanner.zip file & follow the steps below
+
 
 
 ## Configuring the Denodo Scanner
