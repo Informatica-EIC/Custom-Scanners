@@ -1,0 +1,5 @@
+/bin/
+/Target/
+*test*.properties
+.classpath
+.project
