@@ -3,7 +3,7 @@
 
   <groupId>com.infa.edc.scanner.denodo</groupId>
   <artifactId>DenodoScanner</artifactId>
-  <version>0.9.8.5-SNAPSHOT</version>
+  <version>0.9.8.6-SNAPSHOT</version>
   
   <build>
     <sourceDirectory>src</sourceDirectory>
@@ -77,8 +77,18 @@
 	<dependency>
 	  <groupId>com.opencsv</groupId>
 	  <artifactId>opencsv</artifactId>
-	  <version>5.3</version>
+	  <version>5.4</version>
 	</dependency>
+    <dependency>
+        <groupId>com.scanner-util</groupId>
+        <artifactId>encryption</artifactId>
+        <version>0.1</version>
+    </dependency> 
+    <dependency>
+        <groupId>com.denodo</groupId>
+        <artifactId>denodo-vdp-jdbcdriver-full</artifactId>
+        <version>8.0.0-SNAPSHOT</version>
+    </dependency>
   </dependencies>
  
   <properties>
