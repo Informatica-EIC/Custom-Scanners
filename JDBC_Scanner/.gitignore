@@ -4,3 +4,4 @@
 ./denodo_custom_metadata_out/
 target/
 *test/
+/*out/*.csv

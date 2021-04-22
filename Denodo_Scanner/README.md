@@ -49,13 +49,31 @@ unzip the DenodoScanner.zip file & follow the steps below
   * Model=com.infa.ldm.relational  (browse to select only this model)
   * Connection Types=Database (for linking, no need to select schema)
 
-2 - edit (or copy/clone) denodo.properties - used to control the scanner process
+2 - optional - setup an encryped password
+    start the scanner passing only "password" as the first parameter
+    e.g.
+    .\denodoScanner.cmd password
+    ./denodoScanner.sh password
+    the encrypted password will be written to the console
+
+    ```
+    .\scanDenodo.cmd password
+    Denodo Custom scanner: password currentTimeMillis=1619095359330
+    Enter string to encrypt:
+    length of value entered=9
+    encryted text=xtlqK2V6ez+1rHptlqgwIFu9tNSo3MEY
+    'Finished'
+    ```
+    if you use an encryped password - the value of the pwd setting is not used
+
+3 - edit (or copy/clone) denodo.properties - used to control the scanner process
 
 	```properties
 	driverClass=com.denodo.vdp.jdbc.Driver
 	URL=jdbc:vdb://[denodo host]:[denodo vdp port]/[denodo database]
 	user=<user id>
 	pwd=<password>
+    encryptedPwd=<encrypted password>
 	catalog=<list of databases to extract - comma seperated>
 
 	# environment settings
@@ -74,7 +92,7 @@ unzip the DenodoScanner.zip file & follow the steps below
 
 	```
 
-3 - run the scanner
+4 - run the scanner
 
   * `scanDenodo.sh <propertyFile> [agreeToDisclaimer]`
   * output will be written to the folder referenced in denodo.properties (setting: `customMetadata.folder`) and will be named `denodoScanner.zip`
@@ -82,7 +100,7 @@ unzip the DenodoScanner.zip file & follow the steps below
   * for older EDC versions (before v10.2.2hf1) custom lineage can be exported to folder referenced in denodo.properties (setting: `<customMetadata.folder>_lineage/denodo_lineage.csv`), using setting `include.custlineage=false`
 
 
-4 - create a denodo resource
+5 - create a denodo resource
   * create a Denodo resource, using the resource type from Step 1
   * select the denodoScanner.zip file created by the denodo scanner (step 3 above - or configure to run the scanner as a pre-script, no file upload necessary)
   * set "ETL Resource" to Yes  (so the external lineage will be processed)
@@ -93,11 +111,24 @@ unzip the DenodoScanner.zip file & follow the steps below
   <img src="images/edc_ldmadmin_denodo_scanner_config.png">
 
 
+## Start the Scanner using SSL
 
+both scanDenodo.sh and scanDenodo.cmd have variable placeholders to set the truststore file and truststore password
+
+set values for
+  - SCANNER_TRUSTSTORE=<truststore_file.jks>
+  - SCANNER_TRUSTSTORE_PWD=<password for truststore>
 
 ### Running the Denodo Scanner
 
+For Linux/macOS
+
 `scanDenodo.sh <propertyFile> [agreeToDisclaimer]`
+
+For Windows
+
+`scanDenodo.cmd <propertyFile> [agreeToDisclaimer]`
+
 
 scanner log/output is written to stdout (no specific file logging currently) - to pipe results to file
 
