@@ -35,7 +35,7 @@ import scanner_util.EncryptionUtil;
 import com.opencsv.CSVWriter;
 
 public class DenodoScanner extends GenericScanner {
-    public static final String version = "0.9.8.7";
+    public static final String version = "0.9.8.7-expr";
 
     protected static String DISCLAIMER = "\n************************************ Disclaimer *************************************\n"
             + "By using the Denodo scanner, you are agreeing to the following:-\n"
@@ -93,6 +93,21 @@ public class DenodoScanner extends GenericScanner {
     protected CSVWriter missingObjectWriter = null;
     protected int missingObjectCount = 0;
 
+    /**
+     * experimental features skip_expr_collection view_query_filter
+     */
+    // skip expression collection - switch off calls to COLUMN_DEPENDENCIES to find
+    // expression logic for columns (performance test)
+    protected boolean skip_expr_collection = false;
+    // view query filter - default get all views - allows for db filtering for views
+    // - for troubleshooting
+    protected String view_query_filter = "%";
+
+    /**
+     * Scanner constructor - passing the property file that controls the scan
+     *
+     * @param propertyFile
+     */
     public DenodoScanner(String propertyFile) {
         super(propertyFile);
 
@@ -186,6 +201,20 @@ public class DenodoScanner extends GenericScanner {
                 }
                 System.out.println("include filter parts: " + include_objects);
                 System.out.println("include filter regex: " + include_regex);
+            }
+
+            /**
+             * experimental features here
+             */
+            skip_expr_collection = Boolean.parseBoolean(prop.getProperty("skip_expression_collection", "false"));
+            if (skip_expr_collection) {
+                System.out.println("Expression Collection skipped - skip_expr_collection=true");
+            }
+            // view query filter - default get all views - allows for db filtering for views
+            // - for troubleshooting
+            view_query_filter = prop.getProperty("view_select_filter", "%");
+            if (!view_query_filter.equalsIgnoreCase("%")) {
+                System.out.println("View sql query filter input_name='" + view_query_filter + "' will be used");
             }
 
         } catch (Exception e) {
@@ -424,15 +453,20 @@ public class DenodoScanner extends GenericScanner {
         try {
             // error: might be related to dendo express - after 1000 tables using get_views
             // - rsTables.next() hangs - needs testing (Revert back to jdbc getTables)
-            String tabQuery = "SELECT * FROM GET_VIEWS() " + "WHERE input_database_name = ? and view_type=0";
+            // String tabQuery = "SELECT * FROM GET_VIEWS() " + "WHERE input_database_name =
+            // ? and view_type=0";
             if (doDebug && debugWriter != null) {
-                debugWriter.println("executing query to get tables : " + tabQuery);
+                // debugWriter.println("executing query to get tables : " + tabQuery);
+                debugWriter
+                        .println("executing query connection.getMetaData().getTables() for database : " + schemaName);
                 debugWriter.flush();
             }
-            PreparedStatement tabMetadata = connection.prepareStatement(tabQuery);
-            tabMetadata.setString(1, schemaName);
+            // PreparedStatement tabMetadata = connection.prepareStatement(tabQuery);
+            // tabMetadata.setString(1, schemaName);
 
-            ResultSet rsTables = dbMetaData.getTables(schemaName, null, null, new String[] { "TABLE" });
+            // ResultSet rsTables = dbMetaData.getTables(schemaName, null, null, new
+            // String[] { "TABLE" });
+            ResultSet rsTables = dbMetaData.getTables(schemaName, null, view_query_filter, new String[] { "TABLE" });
             // ResultSet rsTables = tabMetadata.executeQuery();
 
             int tableCount = 0;
@@ -615,9 +649,10 @@ public class DenodoScanner extends GenericScanner {
             // { "VIEW" });
             PreparedStatement viewMetadata = null;
             String viewQuery = "SELECT database_name, name, type, user_creator, last_user_modifier, create_date, last_modification_date, description, view_type, folder "
-                    + "FROM GET_VIEWS() " + "WHERE input_database_name = ? and view_type>0";
+                    + "FROM GET_VIEWS() " + "WHERE input_database_name = ? and view_type>0 and input_name = ?";
             viewMetadata = connection.prepareStatement(viewQuery);
             viewMetadata.setString(1, schemaName);
+            viewMetadata.setString(2, view_query_filter);
             if (doDebug && debugWriter != null) {
                 debugWriter.println("getViews:\tprepared sql statement=" + viewQuery);
                 debugWriter.flush();
@@ -776,7 +811,9 @@ public class DenodoScanner extends GenericScanner {
                 // for denodo - we want to document the expression formula for any calculated
                 // fields
                 // so for this table - we will store in memory -
-                storeTableColExpressions(schemaName, viewName);
+                if (!skip_expr_collection) {
+                    storeTableColExpressions(schemaName, viewName);
+                }
 
                 getColumnsForTable(catalogName, schemaName, viewName, true);
             }
