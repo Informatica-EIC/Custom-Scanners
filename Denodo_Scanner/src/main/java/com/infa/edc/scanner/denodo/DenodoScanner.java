@@ -27,13 +27,15 @@ import java.util.zip.ZipOutputStream;
 import java.sql.Connection;
 import javax.swing.JOptionPane;
 import javax.swing.JPasswordField;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 import scanner_util.EncryptionUtil;
 
 import com.opencsv.CSVWriter;
 
 public class DenodoScanner extends GenericScanner {
-    public static final String version = "0.9.8.6";
+    public static final String version = "0.9.8.7";
 
     protected static String DISCLAIMER = "\n************************************ Disclaimer *************************************\n"
             + "By using the Denodo scanner, you are agreeing to the following:-\n"
@@ -70,8 +72,11 @@ public class DenodoScanner extends GenericScanner {
     protected static List<String> tablesWithSQL = new ArrayList<String>();
     protected List<String> objects_skipped = new ArrayList<String>();
 
-    // debugging for AxaXL
     protected Set<String> epSkipViews = new HashSet<String>();
+    protected List<String> exclude_objects = new ArrayList<String>();
+    protected List<Pattern> exclude_regex = new ArrayList<Pattern>();
+    protected List<String> include_objects = new ArrayList<String>();
+    protected List<Pattern> include_regex = new ArrayList<Pattern>();
 
     protected boolean doDebug = false;
     protected boolean exportCustLineageInScanner = false;
@@ -80,6 +85,13 @@ public class DenodoScanner extends GenericScanner {
     Set<String> schemaSchemaLinks = new HashSet<String>();
 
     protected int descVQLErrors = 0;
+    protected int objects_excluded_count = 0;
+    protected int objects_not_included = 0;
+    protected List<String> objects_excluded = new ArrayList<String>();
+
+    protected CSVWriter filteredOutWriter = null;
+    protected CSVWriter missingObjectWriter = null;
+    protected int missingObjectCount = 0;
 
     public DenodoScanner(String propertyFile) {
         super(propertyFile);
@@ -134,6 +146,46 @@ public class DenodoScanner extends GenericScanner {
 
                 }
                 System.out.println("skipping extra processing for: " + epSkipViews);
+            }
+
+            String exclude_exprs = prop.getProperty("exclude.datasets", "");
+            if (exclude_exprs != null && exclude_exprs.length() > 0) {
+                System.out.println("exclude filters = " + exclude_exprs);
+                String[] elements = exclude_exprs.split(",");
+                // System.out.println("exclude parts = " + elements);
+                // System.out.println("filter conditions for catalog " + catalogs);
+                for (String filteredView : elements) {
+                    if (filteredView.trim().equalsIgnoreCase("*")) {
+                        System.out.println("exclude filter * is not allowed is skipped as it would not scan anything");
+                        continue;
+                    }
+                    exclude_objects.add(filteredView.trim().toLowerCase());
+                    String regex_pattern = filteredView.trim().toLowerCase().replaceAll("\\.", "\\\\.")
+                            .replaceAll("\\*", ".*");
+                    Pattern regex = Pattern.compile(regex_pattern, Pattern.CASE_INSENSITIVE);
+                    exclude_regex.add(regex);
+
+                }
+                System.out.println("exclude filter parts: " + exclude_objects);
+                System.out.println("exclude filter regex: " + exclude_regex);
+            }
+
+            String include_exprs = prop.getProperty("include.datasets", "");
+            if (include_exprs != null && include_exprs.length() > 0) {
+                System.out.println("include filters = " + include_exprs);
+                String[] elements = include_exprs.split(",");
+                // System.out.println("exclude parts = " + elements);
+                // System.out.println("filter conditions for catalog " + catalogs);
+                for (String filteredView : elements) {
+                    include_objects.add(filteredView.trim().toLowerCase());
+                    String regex_pattern = filteredView.trim().toLowerCase().replaceAll("\\.", "\\\\.")
+                            .replaceAll("\\*", ".*");
+                    Pattern regex = Pattern.compile(regex_pattern, Pattern.CASE_INSENSITIVE);
+                    include_regex.add(regex);
+
+                }
+                System.out.println("include filter parts: " + include_objects);
+                System.out.println("include filter regex: " + include_regex);
             }
 
         } catch (Exception e) {
@@ -388,12 +440,38 @@ public class DenodoScanner extends GenericScanner {
                 // Print
                 String tableName = rsTables.getString("TABLE_NAME");
                 String comment = rsTables.getString("REMARKS");
-                tableCount++;
                 if (doDebug && debugWriter != null) {
                     debugWriter.println("processing table (" + catalogName + " " + schemaName + "." + tableName + ")");
                     debugWriter.flush();
                 }
 
+                // check if the table is in the include list
+                // System.out.println(include_regex.size() + " "
+                // + isa_regexes_match(include_regex, schemaName.toLowerCase() + "." +
+                // tableName.toLowerCase()));
+                String qualified_name_lc = schemaName.toLowerCase() + "." + tableName.toLowerCase();
+                if (this.include_regex.size() > 0 && !isa_regexes_match(include_regex, qualified_name_lc)) {
+                    // included = false;
+                    // System.out.println("object is not included in the scan, filtering out... " +
+                    // qualified_name_lc);
+                    System.out.print(".");
+                    // log it??
+                    filteredOutWriter.writeNext(new String[] { schemaName + "." + tableName, "not included" });
+                    objects_not_included++;
+                    continue;
+                }
+
+                // check if the object should be excluded (supercedes any include filter)
+                boolean excluded = this.isa_regexes_match(exclude_regex, qualified_name_lc);
+                if (excluded) {
+                    System.out.println("\t\t\texcluding object from scan " + qualified_name_lc);
+                    filteredOutWriter.writeNext(new String[] { schemaName + "." + tableName, "excluded" });
+                    this.objects_excluded.add(qualified_name_lc);
+                    this.objects_excluded_count++;
+                    continue;
+                }
+
+                // obsolete now - remove? - replaced by include/exclude filters
                 if (epSkipViews.contains(schemaName.toLowerCase() + "." + tableName.toLowerCase())) {
                     System.out.println("\t\textract table structure skipped for: " + schemaName + "." + tableName);
                     objects_skipped.add(schemaName + "." + tableName);
@@ -403,6 +481,8 @@ public class DenodoScanner extends GenericScanner {
                     }
                     continue;
                 }
+
+                tableCount++;
 
                 try {
                     // note: folder does not come back from jdbc getMetadata (refactor?)
@@ -551,8 +631,6 @@ public class DenodoScanner extends GenericScanner {
 
             int viewCount = 0;
             while (rsViews.next()) {
-                // Print
-                viewCount++;
                 // jdbc standard call returns TABLE_NAME
                 // String viewName = rsViews.getString("TABLE_NAME");
 
@@ -568,6 +646,28 @@ public class DenodoScanner extends GenericScanner {
                     viewTypeName = "MATERIALIZED TABLE";
                 }
 
+                // check if the view is in the include list
+                String qualified_name_lc = schemaName.toLowerCase() + "." + viewName.toLowerCase();
+                if (this.include_regex.size() > 0 && !isa_regexes_match(include_regex, qualified_name_lc)) {
+                    // included = false;
+                    // System.out.println("object is not included in the scan, filtering out... " +
+                    // qualified_name_lc);
+                    filteredOutWriter.writeNext(new String[] { schemaName + "." + viewName, "not included" });
+                    System.out.print(".");
+                    objects_not_included++;
+                    continue;
+                }
+
+                // check if the object should be excluded (supercedes any include filter)
+                boolean excluded = this.isa_regexes_match(exclude_regex, qualified_name_lc);
+                if (excluded) {
+                    System.out.println("\t\t\texcluding object from scan " + qualified_name_lc);
+                    filteredOutWriter.writeNext(new String[] { schemaName + "." + viewName, "excluded" });
+                    this.objects_excluded.add(qualified_name_lc);
+                    this.objects_excluded_count++;
+                    continue;
+                }
+
                 if (epSkipViews.contains(schemaName.toLowerCase() + "." + viewName.toLowerCase())) {
                     System.out.println("\t\textract view structure skipped for: " + schemaName + "." + viewName);
                     objects_skipped.add(schemaName + "." + viewName);
@@ -577,6 +677,8 @@ public class DenodoScanner extends GenericScanner {
                     }
                     continue;
                 }
+
+                viewCount++;
 
                 // MATERIALIZED TABLE
 
@@ -964,6 +1066,10 @@ public class DenodoScanner extends GenericScanner {
                                 }
                             } else {
                                 System.out.println("\t\textractViewLevelLineageRefactored lookup not found: " + objKey);
+                                // this could happen when a table/view that is used by this view was filtered
+                                // out...
+                                missingObjectCount++;
+                                missingObjectWriter.writeNext(new String[] { objKey });
                                 // log it???
                             }
                         }
@@ -1597,6 +1703,11 @@ public class DenodoScanner extends GenericScanner {
             this.linksWriter = new CSVWriter(
                     new BufferedWriter(new FileWriter(customMetadataFolder + "/" + LINKS_FILENAME)));
 
+            this.filteredOutWriter = new CSVWriter(
+                    new BufferedWriter(new FileWriter(customMetadataFolder + "/" + "excluded_objects.csv")));
+            missingObjectWriter = new CSVWriter(
+                    new BufferedWriter(new FileWriter(customMetadataFolder + "/" + "missing_objects.txt")));
+
             otherObjWriter.writeNext(new String[] { "class", "identity", "core.name",
                     "com.infa.ldm.relational.StoreType", "com.infa.ldm.relational.SystemType" });
             tableWriter.writeNext(new String[] { "class", "identity", "core.name", "core.description",
@@ -1612,6 +1723,7 @@ public class DenodoScanner extends GenericScanner {
                             "core.dataSetUuid", "com.infa.ldm.relational.ViewStatement", "core.description" });
 
             linksWriter.writeNext(new String[] { "association", "fromObjectIdentity", "toObjectIdentity" });
+            filteredOutWriter.writeNext(new String[] { "object", "filter type" });
 
             String outFolder = customMetadataFolder + "_lineage";
             String lineageFileName = outFolder + "/" + "denodo_lineage.csv";
@@ -1686,6 +1798,12 @@ public class DenodoScanner extends GenericScanner {
         System.out.println("desc vql errors: " + descVQLErrors);
         System.out.println("skipped objects: " + objects_skipped.size());
         System.out.println("\t" + objects_skipped);
+        System.out.println("excluded obj count: " + objects_excluded_count + " see " + customMetadataFolder
+                + "/excluded_objects.txt");
+        // System.out.println("excluded objects: " + objects_excluded);
+        System.out.println("not included obj count: " + objects_not_included);
+        System.out.println("missing object count: " + missingObjectCount + " see " + customMetadataFolder
+                + "/missing_objects.txt");
 
         // we can';t call the superclass to close files - since it also zips
         // super.closeFiles();
@@ -1698,6 +1816,8 @@ public class DenodoScanner extends GenericScanner {
             columnWriter.close();
             viewColumnWriter.close();
             linksWriter.close();
+            filteredOutWriter.close();
+            missingObjectWriter.close();
         } catch (IOException e) {
             e.printStackTrace();
             return false;
@@ -1775,6 +1895,8 @@ public class DenodoScanner extends GenericScanner {
             viewColumnWriter.flush();
             linksWriter.flush();
             custLineageWriter.flush();
+            filteredOutWriter.flush();
+            missingObjectWriter.flush();
             if (debugWriter != null) {
                 debugWriter.flush();
             }
@@ -1824,6 +1946,20 @@ public class DenodoScanner extends GenericScanner {
         }
 
         return;
+    }
+
+    protected boolean isa_regexes_match(List<Pattern> regexes_to_match, String obj_to_test) {
+        boolean ret_val = false;
+        for (Pattern regex_pattern : regexes_to_match) {
+            Matcher m = regex_pattern.matcher(obj_to_test);
+            ret_val = m.matches();
+            if (ret_val) {
+                // System.out.println("\n\n\n");
+                // System.out.println(obj_to_test + " MATCHES!!! " + regex_pattern);
+                break;
+            }
+        }
+        return ret_val;
     }
 
     /**

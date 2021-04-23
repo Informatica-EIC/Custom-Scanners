@@ -1,5 +1,30 @@
 Version History/Changes for Denodo Scanner
 ------------------------------------------
+2021/04/22 - v0.9.8.7
+- new feature - table/view include and exclude filters
+    include.datasets=comma seperate list of wildcards for objects to include (<databsae>.<table|view>)
+    exclude.datasets=comma seperate list of wildcards for objects to exclude (<databsae>.<table|view>)
+
+    exclude takes precedence (e.g. if an object is both included and excluded, it will not be scanned)
+
+    default (no values set) - all objects are included, no objects are excluded
+
+    example:-
+    # - include only datasets with acct anywhere in the name, for all databases or start with cust (in any database)
+    include.datasets=*.*acct,*.cust*
+    # - exclude any datasets with test in the name
+    exclude.datasets=*.*test*
+
+    expressions are converted to regex and are compared when extracting tables and views
+
+    output folder will have 2 new files:-
+    - excluded_objects.csv - list of all excluded objects & the filter type (excluded|not included)
+    - missing_objects.csv - list of the objects that are referenced by scanned objects, but were excluded|not included
+
+    setting ep.skipobjects is now mostly obsolete, but still included for backwards compatibility
+
+
+
 2021/04/21 - v0.9.8.6
 - bugfix ep.skipobjects was case sensitive, switched to case insensitive
 - changed csv writer to use BufferedWriter class
