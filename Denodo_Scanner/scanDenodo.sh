@@ -12,7 +12,8 @@ propfile=$1
 # set ssl jvm options (if needed)
 # assumption is $INFA_HOME is set - change settings to suit your environment
 # add a truststore password for the truststore you are using
-export SCANNER_TRUSTSTORE=$INFA_HOME/services/shared/security/infa_truststore.JKS
+# you can use any truststore - including cacerts, after importing the denodo certificate
+export SCANNER_TRUSTSTORE=$INFA_HOME/services/shared/security/infa_truststore.jks
 export SCANNER_TRUSTSTORE_PWD=
 export JAVA_OPTS=-Djavax.net.ssl.trustStore=$SCANNER_TRUSTSTORE -Djavax.net.ssl.trustStorePassword=$SCANNER_TRUSTSTORE_PWD -Djavax.net.ssl.trustStoreType=JKS
 

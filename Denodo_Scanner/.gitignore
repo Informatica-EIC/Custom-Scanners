@@ -3,4 +3,7 @@
 *test*.properties
 .classpath
 .project
-/*out/*.csv
+/*out/*.*
+.settings/*
+.vscode/*
+

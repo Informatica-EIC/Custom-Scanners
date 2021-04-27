@@ -1,5 +1,15 @@
 Version History/Changes for Denodo Scanner
 ------------------------------------------
+2021/04/27 - v0.9.8.8
+- bugfix - connection assignment for SAP Hana calculation views was wrong
+           see issue #36 https://github.com/Informatica-EIC/Custom-Scanners/issues/36
+           when a schema _SYS_BIC is used - it will be removed & the package references will have any . package seperators replaced with a /
+- experimental feature
+  the.properties you can add a  `view_select_filter` with a single expression, to filter tables/views when querying denodo
+  example:-
+  view_select_filter=%claim%
+
+
 2021/04/22 - v0.9.8.7
 - new feature - table/view include and exclude filters
     include.datasets=comma seperate list of wildcards for objects to include (<databsae>.<table|view>)

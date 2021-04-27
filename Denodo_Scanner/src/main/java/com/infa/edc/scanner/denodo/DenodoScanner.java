@@ -35,7 +35,7 @@ import scanner_util.EncryptionUtil;
 import com.opencsv.CSVWriter;
 
 public class DenodoScanner extends GenericScanner {
-    public static final String version = "0.9.8.7-expr";
+    public static final String version = "0.9.8.8";
 
     protected static String DISCLAIMER = "\n************************************ Disclaimer *************************************\n"
             + "By using the Denodo scanner, you are agreeing to the following:-\n"
@@ -1841,6 +1841,12 @@ public class DenodoScanner extends GenericScanner {
         System.out.println("not included obj count: " + objects_not_included);
         System.out.println("missing object count: " + missingObjectCount + " see " + customMetadataFolder
                 + "/missing_objects.txt");
+        System.out.println("SAP Hana _SYS_BIC substitutions: " + Wrapper.schema_subst.size());
+        if (Wrapper.schema_subst.size() > 0) {
+            for (HashMap.Entry<String, String> entry : Wrapper.schema_subst.entrySet()) {
+                System.out.println("\t\t" + entry.getKey() + " > " + entry.getValue());
+            }
+        }
 
         // we can';t call the superclass to close files - since it also zips
         // super.closeFiles();

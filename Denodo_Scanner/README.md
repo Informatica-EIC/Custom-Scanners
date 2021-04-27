@@ -114,6 +114,7 @@ unzip the DenodoScanner.zip file & follow the steps below
 ## Start the Scanner using SSL
 
 both scanDenodo.sh and scanDenodo.cmd have variable placeholders to set the truststore file and truststore password
+you can export the denodo certificate into any trustore in a .jks format (for java) and reference that truststore when starting the scanner
 
 set values for
   - SCANNER_TRUSTSTORE=<truststore_file.jks>
