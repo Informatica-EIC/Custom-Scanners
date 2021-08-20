@@ -15,7 +15,7 @@ propfile=$1
 # you can use any truststore - including cacerts, after importing the denodo certificate
 export SCANNER_TRUSTSTORE=$INFA_HOME/services/shared/security/infa_truststore.jks
 export SCANNER_TRUSTSTORE_PWD=
-export JAVA_OPTS=-Djavax.net.ssl.trustStore=$SCANNER_TRUSTSTORE -Djavax.net.ssl.trustStorePassword=$SCANNER_TRUSTSTORE_PWD -Djavax.net.ssl.trustStoreType=JKS
+export JAVA_OPTS="-Djavax.net.ssl.trustStore=$SCANNER_TRUSTSTORE -Djavax.net.ssl.trustStorePassword=$SCANNER_TRUSTSTORE_PWD -Djavax.net.ssl.trustStoreType=JKS"
 
 java ${JAVA_OPTS} -cp "denodoCustomScanner.jar:lib/*" com.infa.edc.scanner.denodo.DenodoScanner ${propfile} $2
 
