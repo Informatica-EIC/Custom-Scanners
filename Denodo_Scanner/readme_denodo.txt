@@ -1,6 +1,7 @@
 Version History/Changes for Denodo Scanner
 ------------------------------------------
-2021/08/17 - v 0.9.8.9
+2021/08/17 - v 1.0.0
+- version number now starting at 1.0 - for Informatica Network submission
 - bugfix issue #38 - external lineage for mysql was exporting null as the owning schema name
     for wrappers that are JDBC|ODBC, if there is no SCHEMANAME, the CATALOGNAME will be used
     https://github.com/Informatica-EIC/Custom-Scanners/issues/38
