@@ -28,6 +28,7 @@ public class Wrapper {
     private String folder;
     private String schema;
     private String relation;
+    private String catalog;
     private String dataSource;
     private DataSource dataSourceObj;
     private String sqlSentance;
@@ -162,6 +163,11 @@ public class Wrapper {
                 if (tokens.length > 0) {
                     this.schema = tokens[0];
                 }
+            } else if (aLine.trim().startsWith("CATALOGNAME=")) {
+                String[] tokens = aLine.trim().substring(13).trim().split("'");
+                if (tokens.length > 0) {
+                    this.catalog = tokens[0];
+                }
                 // this.relation = aLine.trim().substring(11).replaceAll("'", "");
                 // end of FOLDER =
             } else if (aLine.trim().startsWith("RELATIONNAME=")) {
@@ -202,6 +208,12 @@ public class Wrapper {
                 }
             }
 
+        }
+        // if there is no schema name found - use catalog name (mysql will not have a
+        // schema)
+        if (this.schema == null && (this.type.equals("JDBC") | this.type.equals("ODBC"))) {
+            System.out.println("\t\tno schema found for wrapper " + this.name + " using catalog=" + this.catalog);
+            this.schema = this.catalog;
         }
 
         Wrapper.cache.put(inDatabase + "." + this.name, this);
