@@ -93,6 +93,8 @@ public class DenodoScanner extends GenericScanner {
     protected CSVWriter missingObjectWriter = null;
     protected int missingObjectCount = 0;
 
+    protected CDGCWriter cdgcWriter = new CDGCWriter();
+
     /**
      * experimental features skip_expr_collection view_query_filter
      */
@@ -305,6 +307,7 @@ public class DenodoScanner extends GenericScanner {
         System.out.println("Step 5: creating denodo catalog...");
 
         this.createDatabase(databaseName);
+        cdgcWriter.createDatabase(databaseName);
 
         getSchemas(databaseName);
     }
@@ -349,6 +352,7 @@ public class DenodoScanner extends GenericScanner {
         for (String schemaName : schemasToProcess) {
             System.out.println("\tschema: " + schemaName);
             createSchema(catalogName, schemaName);
+            cdgcWriter.createSchema(catalogName, schemaName);
 
             // extract datasources - we need these later, since they are used across
             // databases
@@ -566,6 +570,7 @@ public class DenodoScanner extends GenericScanner {
 
                     // System.out.println(rsTables.getMetaData().getColumnTypeName(5));
                     this.createTableWithSQL(catalogName, schemaName, tableName, comment, wrapperSQL, folder);
+                    cdgcWriter.createTable(catalogName, schemaName, tableName, comment, folder);
                     // this.createTable(catalogName, schemaName, tableName, comment);
 
                     // System.out.println("calling get columns.." + tableCount);
@@ -807,6 +812,8 @@ public class DenodoScanner extends GenericScanner {
                 // viewSqlStmnt = ""; // delete for validation testing
                 this.createView(catalogName, schemaName, viewName, rsViews.getString("description"), viewSqlStmnt,
                         rsViews.getString("folder"));
+                cdgcWriter.createView(catalogName, schemaName, viewName, rsViews.getString("description"), viewSqlStmnt,
+                        rsViews.getString("folder"));
 
                 // for denodo - we want to document the expression formula for any calculated
                 // fields
@@ -920,9 +927,15 @@ public class DenodoScanner extends GenericScanner {
                 if (isView) {
                     this.createViewColumn(catalogName, schemaName, tableName, columnName, typeName, columnsize, pos,
                             exprVal, comments);
+                    cdgcWriter.createViewColumn(catalogName, schemaName, tableName, columnName, typeName, columnsize,
+                            pos,
+                            comments, exprVal);
+
                 } else {
                     this.createColumn(catalogName, schemaName, tableName, columnName, typeName, columnsize, pos,
                             comments, isView);
+                    cdgcWriter.createColumn(catalogName, schemaName, tableName, columnName, typeName, columnsize, pos,
+                            comments);
                 }
 
                 // add to name mapping
@@ -1084,6 +1097,10 @@ public class DenodoScanner extends GenericScanner {
                                 String lefttabId = databaseName + "/" + leftDB + "/" + leftVW;
                                 String righttabId = databaseName + "/" + dbName + "/" + viewName;
                                 linksWriter.writeNext(new String[] { "core.DataSetDataFlow", lefttabId, righttabId });
+
+                                // note: cdgc does not need dataset and dataement links - will infer dataset
+                                // cdgcWriter.writeLineage(lefttabId, righttabId, "core.DataSetDataFlow");
+
                                 // if (isDebug) {
                                 // System.out.println("\t\t\twriting table refactored level lineage: " +
                                 // lefttabId + " ==>> " + righttabId);
@@ -1099,6 +1116,9 @@ public class DenodoScanner extends GenericScanner {
                                     schemaSchemaLinks.add(schemaSchemaKey);
                                     linksWriter.writeNext(new String[] { "core.DataSourceDataFlow",
                                             databaseName + "/" + leftDB, databaseName + "/" + dbName });
+                                    // cdgcWriter.writeLineage(databaseName + "/" + leftDB, databaseName + "/" +
+                                    // dbName,
+                                    // "core.DataSourceDataFlow");
                                     // System.out.println("schema link ++++ " + schemaSchemaKey);
                                 }
                             } else {
@@ -1359,6 +1379,7 @@ public class DenodoScanner extends GenericScanner {
                             String rightId = databaseName + "/" + tgtKey;
                             if (!colUniqeLineage.contains(leftId + ":" + rightId)) {
                                 linksWriter.writeNext(new String[] { "core.DirectionalDataFlow", leftId, rightId });
+                                cdgcWriter.writeLineage(leftId, rightId, "core.DirectionalDataFlow");
                                 // System.out.println("\t\t\t\twriting column level lineage: " + leftId + " ==>>
                                 // " + rightId);
                                 colUniqeLineage.add(leftId + ":" + rightId);
@@ -1382,6 +1403,7 @@ public class DenodoScanner extends GenericScanner {
                                         String rightId = databaseName + "/" + tgtKey;
                                         linksWriter.writeNext(
                                                 new String[] { "core.DirectionalDataFlow", leftId, rightId });
+                                        cdgcWriter.writeLineage(leftId, rightId, "core.DirectionalDataFlow");
                                         // System.out.println("\t\t\t\twriting column level lineage from expr: " +
                                         // leftId + " ==>>> " + rightId);
                                         totalColumnLineage++;
@@ -1718,7 +1740,7 @@ public class DenodoScanner extends GenericScanner {
         // don't call super.initfiles() - we have more headers for tables for denodo
         boolean initialized = true;
         System.out.println("Step 3: initializing files in: " + customMetadataFolder);
-
+        this.cdgcWriter.initFiles(customMetadataFolder + "_CDGC");
         try {
             // check that the folder exists - if not, create it
             File directory = new File(String.valueOf(customMetadataFolder));
@@ -1808,6 +1830,7 @@ public class DenodoScanner extends GenericScanner {
      */
     protected boolean closeFiles() {
         System.out.println("closing denodo specific files");
+        cdgcWriter.closeFiles();
 
         try {
             custLineageWriter.close();
