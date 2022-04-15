@@ -3,7 +3,7 @@
 
   <groupId>com.infa.edc.scanner.denodo</groupId>
   <artifactId>DenodoScanner</artifactId>
-  <version>1.1.000-SNAPSHOT</version>
+  <version>1.0.010-SNAPSHOT</version>
 
   <build>
     <sourceDirectory>src/main/java</sourceDirectory>

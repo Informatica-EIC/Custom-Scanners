@@ -82,6 +82,10 @@ public class Wrapper {
         return dataSource;
     }
 
+    String getSchema() {
+        return schema;
+    }
+
     String getSqlSentance() {
         return sqlSentance;
     }

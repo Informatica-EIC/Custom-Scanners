@@ -9,6 +9,7 @@ import java.io.FileWriter;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
+// import java.util.concurrent.locks.ReentrantReadWriteLock.WriteLock;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipOutputStream;
 
@@ -28,6 +29,10 @@ public class CDGCWriter {
     protected CSVWriter columnWriter = null;
     protected CSVWriter viewColumnWriter = null;
     protected CSVWriter linksWriter = null;
+    protected CSVWriter refDataSourceWriter = null;
+    protected CSVWriter refDataSetWriter = null;
+    protected CSVWriter refDataElementWriter = null;
+    protected CSVWriter refResourceWriter = null;
 
     protected String RELATIONAL_PACKAGE = "com.infa.odin.models.relational";
     protected String DB_FILENAME = RELATIONAL_PACKAGE + ".Database.csv";
@@ -38,7 +43,15 @@ public class CDGCWriter {
     protected String VIEWCOL_FILENAME = RELATIONAL_PACKAGE + ".ViewColumn.csv";
     protected String LINKS_FILENAME = "links.csv";
 
+    protected String REF_RESOURCE_FILENAME = "core.Resource.csv";
+    protected String REF_DATASOURCE_FILENAME = "core.DataSource.csv";
+    protected String REF_DATASET_FILENAME = "core.DataSet.csv";
+    protected String REF_DATAELEMENT_FILENAME = "core.DataElement.csv";
+
     static Boolean APPLY_QUOTES_TO_ALL = false;
+
+    private List<String> ref_resources = new ArrayList<String>();
+    private List<String> ref_datasources = new ArrayList<String>();
 
     protected CDGCWriter() {
 
@@ -103,6 +116,30 @@ public class CDGCWriter {
             linksWriter.writeNext(new String[] { "Source", "Target",
                     "Association" }, APPLY_QUOTES_TO_ALL);
 
+            refResourceWriter = new CSVWriter(
+                    new BufferedWriter(new FileWriter(this.outFolder + "/" +
+                            REF_RESOURCE_FILENAME)));
+            refResourceWriter.writeNext(new String[] { "core.externalId", "core.Reference",
+                    "core.assignable", "core.name" }, APPLY_QUOTES_TO_ALL);
+
+            refDataSourceWriter = new CSVWriter(
+                    new BufferedWriter(new FileWriter(this.outFolder + "/" +
+                            REF_DATASOURCE_FILENAME)));
+            refDataSourceWriter.writeNext(new String[] { "core.externalId", "core.Reference",
+                    "core.assignable", "core.name" }, APPLY_QUOTES_TO_ALL);
+
+            refDataSetWriter = new CSVWriter(
+                    new BufferedWriter(new FileWriter(this.outFolder + "/" +
+                            REF_DATASET_FILENAME)));
+            refDataSetWriter.writeNext(new String[] { "core.externalId", "core.Reference",
+                    "core.assignable", "core.name" }, APPLY_QUOTES_TO_ALL);
+
+            refDataElementWriter = new CSVWriter(
+                    new BufferedWriter(new FileWriter(this.outFolder + "/" +
+                            REF_DATAELEMENT_FILENAME)));
+            refDataElementWriter.writeNext(new String[] { "core.externalId", "core.Reference",
+                    "core.assignable", "core.name" }, APPLY_QUOTES_TO_ALL);
+
             System.out.println("\tCDGC Files initialized");
 
         } catch (IOException e1) {
@@ -125,6 +162,10 @@ public class CDGCWriter {
             columnWriter.close();
             viewWriter.close();
             viewColumnWriter.close();
+            refDataSourceWriter.close();
+            refDataSetWriter.close();
+            refDataElementWriter.close();
+            refResourceWriter.close();
         } catch (IOException e) {
             e.printStackTrace();
             return false;
@@ -138,8 +179,12 @@ public class CDGCWriter {
         srcFiles.add(outFolder + "/" + LINKS_FILENAME);
         srcFiles.add(outFolder + "/" + TABLE_FILENAME);
         srcFiles.add(outFolder + "/" + TABLECOL_FILENAME);
-        srcFiles.add(outFolder + "/" + VIEW_FILENAME);
         srcFiles.add(outFolder + "/" + VIEWCOL_FILENAME);
+        srcFiles.add(outFolder + "/" + VIEW_FILENAME);
+        srcFiles.add(outFolder + "/" + REF_RESOURCE_FILENAME);
+        srcFiles.add(outFolder + "/" + REF_DATASOURCE_FILENAME);
+        srcFiles.add(outFolder + "/" + REF_DATASET_FILENAME);
+        srcFiles.add(outFolder + "/" + REF_DATAELEMENT_FILENAME);
 
         try {
             System.out.println(
@@ -285,5 +330,83 @@ public class CDGCWriter {
 
     public void createDataSetDataFlow(String fromId, String toId) {
         linksWriter.writeNext(new String[] { fromId, toId, "core.DataSetDataFlow" }, APPLY_QUOTES_TO_ALL);
+    }
+
+    public void createReferenceDataset(String dbName, String schemaName, String tableName, List<String> columns,
+            Wrapper wrapperObj) {
+        // # this does not work
+        // return
+        String wrappedSchema = wrapperObj.getSchema();
+        String wrappedTable = wrapperObj.getName();
+
+        System.out.println("creating ref objects for " + dbName + "." + schemaName + "." + tableName + " with "
+                + columns.size() + "columns");
+
+        String conectionName = wrapperObj.getDataSource() + "__" + wrapperObj.getType();
+        System.out.println("connection name: " + conectionName);
+
+        String dataSourceId = conectionName + "." + wrappedSchema;
+        // add schema data source only if not already there
+
+        // create a reference resource- that contains the datasets
+        if (!ref_resources.contains(conectionName)) {
+            refResourceWriter.writeNext(new String[] { conectionName, "TRUE",
+                    "", conectionName }, APPLY_QUOTES_TO_ALL);
+            linksWriter.writeNext(new String[] { "$resource", conectionName,
+                    "core.ResourceParentChild" });
+
+            ref_resources.add(conectionName);
+        }
+
+        // create the datasource (schema), if not already created
+        if (!ref_datasources.contains(dataSourceId)) {
+            refDataSourceWriter.writeNext(new String[] { dataSourceId, "TRUE",
+                    "TRUE", dataSourceId }, APPLY_QUOTES_TO_ALL);
+
+            // add resource parent child for the datasource
+            linksWriter.writeNext(new String[] { conectionName, dataSourceId,
+                    "core.ResourceParentChild" });
+
+            ref_datasources.add(dataSourceId);
+        }
+        // now look at the tables
+        String dataSetId = dataSourceId + "/" + wrappedTable;
+        String newdataSetId = wrappedSchema + "/" + wrappedTable;
+        String linkedDataSet = dbName + "/" + schemaName + "/" + tableName;
+        refDataSetWriter.writeNext(new String[] { newdataSetId, "TRUE",
+                "", wrappedTable }, APPLY_QUOTES_TO_ALL);
+        linksWriter
+                .writeNext(new String[] { dataSourceId, newdataSetId,
+                        "core.DataSourceParentChild"
+                });
+
+        linksWriter
+                .writeNext(new String[] { newdataSetId, linkedDataSet, "core.DataSetDataFlow"
+                });
+
+        // contained columns...
+        for (String tgtCol : columns) {
+            String fromCol = wrapperObj.getOutputSchema().get(tgtCol);
+            if (fromCol == null || fromCol.isEmpty()) {
+                System.out.println("\tERROR: no from col mapped???? to=" + dataSetId + "." + tgtCol);
+                System.out.println(wrapperObj.getOutputSchema().keySet());
+            } else {
+                String fromColId = newdataSetId + "/" + fromCol;
+
+                refDataElementWriter.writeNext(new String[] { fromColId, "TRUE",
+                        "", fromCol }, APPLY_QUOTES_TO_ALL);
+                linksWriter
+                        .writeNext(new String[] { newdataSetId, fromColId,
+                                "core.DataSetToDataElementParentship"
+                        });
+
+                // custLineageCount++;
+                linksWriter.writeNext(new String[] { // connection
+                        fromColId, linkedDataSet + "/" + tgtCol, "core.DirectionalDataFlow" });
+
+            }
+
+        }
+
     }
 }

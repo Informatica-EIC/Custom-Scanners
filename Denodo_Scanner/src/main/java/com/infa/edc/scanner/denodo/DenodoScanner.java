@@ -1099,7 +1099,7 @@ public class DenodoScanner extends GenericScanner {
                                 linksWriter.writeNext(new String[] { "core.DataSetDataFlow", lefttabId, righttabId });
 
                                 // note: cdgc does not need dataset and dataement links - will infer dataset
-                                // cdgcWriter.writeLineage(lefttabId, righttabId, "core.DataSetDataFlow");
+                                cdgcWriter.writeLineage(lefttabId, righttabId, "core.DataSetDataFlow");
 
                                 // if (isDebug) {
                                 // System.out.println("\t\t\twriting table refactored level lineage: " +
@@ -1564,7 +1564,11 @@ public class DenodoScanner extends GenericScanner {
                             custLineageCount += theWr.writeLineage(custLineageWriter, databaseName, schema, table,
                                     tableMap.get(table), exportCustLineageInScanner);
                             allCustLineageCount += custLineageCount;
+
+                            // cdgc ref objects
+                            cdgcWriter.createReferenceDataset(databaseName, schema, table, tableMap.get(table), theWr);
                         }
+
                         System.out.println(" " + custLineageCount + " lineage links exported");
                     }
 
