@@ -90,6 +90,10 @@ public class Wrapper {
         return sqlSentance;
     }
 
+    String getRelation() {
+        return relation;
+    }
+
     String getVql() {
         return vql;
     }
