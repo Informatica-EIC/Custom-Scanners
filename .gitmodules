@@ -1,0 +1,3 @@
+[submodule "odata-edc-scanner"]
+	path = odata-edc-scanner
+	url = https://github.com/cic1988/odata-edc-scanner.git
