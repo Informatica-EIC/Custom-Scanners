@@ -36,12 +36,7 @@ Generate CSV files from Swagger JSON
 execute the following command:
 
 ```
-java -jar <PATH_TO_JAR>\Swagger-Spec-Scanner-Demo-0.1.0-SNAPSHOT.jar -swagger <PATH_TO_JSON>\swagger.json [-out <output folder>]
-```
-
-for versions prior to v10.2.2hf1 use the original version - Note this version will not zip any files, or be updated
-```
-java -jar <PATH_TO_JAR>\swaggertoeic.jar -swagger <PATH_TO_JSON>\swagger.json
+java -jar <PATH_TO_JAR>\Swagger-Spec-Scanner-Demo-0.1.1-SNAPSHOT.jar -swagger <PATH_TO_JSON>\swagger.json [-out <output folder>]
 ```
 
 
@@ -85,7 +80,7 @@ To create Swagger-Spec-Scanner-Demo-<version>-SNAPSHOT.jar   - version is define
     cd Swagger-Spec-Scanner
     mvn clean package
     ```
-    the packaged folder will be created - with Swagger-Spec-Scanner-Demo-0.1.0-SNAPSHOT.jar & the folder lib (contains all dependent .jar files).  the other folders can be ignored
+    the packaged folder will be created - with Swagger-Spec-Scanner-Demo-0.1.0-SNAPSHOT.jar & the folder lib (contains all dependent .jar files that maven will download).  the other folders can be ignored
 
     a Swagger-Spec-Scanner-Demo.zip file is created - containing the packaged .jar files, readme.md and the sample folders
   * compiled project will be written to the `packaged` folder, with a lib sub-folder that contains all dependent jar files (opencsv, swagger parser etc)
@@ -95,6 +90,9 @@ To create Swagger-Spec-Scanner-Demo-<version>-SNAPSHOT.jar   - version is define
 # History
 ---------
 
+- 2022-June - bugfix release
+  - https://github.com/Informatica-EIC/Custom-Scanners/issues/43
+    NullPointerException found when processing some swagger specs
 - 2021-February
   - updated to new(er) custom scanner framework file names (objects*.csv) - works with EDC 10.2.2hf1+  - tested with EDC 10.4.1.3 & 10.5
   - generates .zip file for import into catalog (manually needed before)
