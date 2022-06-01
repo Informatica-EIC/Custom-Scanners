@@ -9,11 +9,11 @@
 		Swagger-Spec-Scanner-Demo
 	</artifactId>
 	<version>
-		0.1.0-SNAPSHOT
+		0.1.1-SNAPSHOT
 	</version>
 	<build>
 		<sourceDirectory>
-			src
+			src/java
 		</sourceDirectory>
 		<plugins>
 			<plugin>
@@ -55,7 +55,7 @@
 					maven-jar-plugin
 				</artifactId>
 				<version>
-					2.3
+					3.2.1
 				</version>
 				<configuration>
 					<archive>
@@ -143,10 +143,10 @@
 				org.slf4j
 			</groupId>
 			<artifactId>
-				slf4j-log4j12
+				slf4j-reload4j
 			</artifactId>
 			<version>
-				1.7.21
+				1.7.36
 			</version>
 		</dependency>
 	</dependencies>
