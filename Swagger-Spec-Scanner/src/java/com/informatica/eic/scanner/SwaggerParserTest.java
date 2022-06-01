@@ -186,17 +186,18 @@ public class SwaggerParserTest {
 
 		Map<String, Tag> tagMap = new HashMap<String, Tag>();
 
+		// System.out.println("Tags:");
 		if (tags != null) {
 			for (Tag tag : tags) {
-				System.out.println(tag.getName());
+				// System.out.println(tag.getName());
 				tagMap.put(tag.getName(), tag);
-				System.out.println(tag.getDescription());
-				ExternalDocs tagdocs = tag.getExternalDocs();
-				if (tagdocs != null) {
-					System.out.println(tagdocs.getUrl());
-				}
+				// System.out.println(tag.getDescription());
+				// ExternalDocs tagdocs = tag.getExternalDocs();
+				// if (tagdocs != null) {
+				// System.out.println(tagdocs.getUrl());
+				// }
 
-				System.out.println("==========");
+				// System.out.println("==========");
 			}
 
 		}
@@ -265,51 +266,67 @@ public class SwaggerParserTest {
 						operation.getSummary() == null ? "" : operation.getSummary() });
 
 				System.out.println(opName);
-				System.out.println(operation.getDescription() == null ? "" : operation.getDescription());
-				System.out.println(operation.getSummary() == null ? "" : operation.getSummary());
+				// System.out.println(operation.getDescription() == null ? "" :
+				// operation.getDescription());
+				// System.out.println(operation.getSummary() == null ? "" :
+				// operation.getSummary());
 
 				if (operation.getParameters() != null) {
 
 					for (Parameter param : operation.getParameters()) {
 
-						System.out.println("paramter type=" + param.getClass().getSimpleName());
-						System.out.println("\tp.getIn()" + param.getIn());
-						System.out.println("\tp.getName()" + param.getName());
-						System.out.println("\tp.getAccess()" + param.getAccess());
-						System.out.println("\tp.getDescription()" + param.getDescription());
-						System.out.println("\tp.getPattern()" + param.getPattern());
-						System.out.println("\tp.getRequired()" + param.getRequired());
+						// System.out.println("paramter type=" + param.getClass().getSimpleName());
+						// System.out.println("\tp.getIn()" + param.getIn());
+						// System.out.println("\tp.getName()" + param.getName());
+						// System.out.println("\tp.getAccess()" + param.getAccess());
+						// System.out.println("\tp.getDescription()" + param.getDescription());
+						// System.out.println("\tp.getPattern()" + param.getPattern());
+						// System.out.println("\tp.getRequired()" + param.getRequired());
 
-                        // default parameter type (if cannot find)
+						// default parameter type (if cannot find)
 						String paramType = "string";
 
 						if (param instanceof BodyParameter) {
 							BodyParameter bp = (BodyParameter) param;
-							System.out.println("bp=" + bp.getSchema().toString());
-							// printBody(swagger, bp);
-							RefProperty rp = new RefProperty(bp.getSchema().getReference());
-							paramType = rp.getSimpleRef();
+							// System.out.println("bp=" + bp.getSchema().getClass().getName());
+							// System.out.println("bp=" + bp.getSchema().toString());
+							if (bp.getSchema() instanceof ArrayModel) {
+								System.out.println("array model found...");
+								ArrayModel ar = (ArrayModel) bp.getSchema();
+								// System.out.println("array.." + ar.getItems().getType());
+								paramType = "array[" + ar.getItems().getType() + "]";
+								RefProperty rp = new RefProperty(bp.getSchema().getReference());
+								paramType = rp.getSimpleRef();
+							} else if (bp.getSchema() instanceof ModelImpl) {
+								// System.out.println("ModelImpl found...");
+								ModelImpl mi = (ModelImpl) bp.getSchema();
+								System.out.println("mi type = " + mi.getType());
+								paramType = mi.getType();
+							} else {
+								// printBody(swagger, bp);
+								RefProperty rp = new RefProperty(bp.getSchema().getReference());
+								paramType = rp.getSimpleRef();
+							}
 						}
 
 						if (param instanceof HeaderParameter) {
 							HeaderParameter hp = (HeaderParameter) param;
-							System.out.println("\theader parm type= " + hp.getType());
+							// System.out.println("\theader parm type= " + hp.getType());
 							paramType = hp.getType();
 							// printHeader(swagger, (HeaderParameter) param);
-                        }
+						}
 
-                        if (param instanceof QueryParameter) {
-                            QueryParameter qp = (QueryParameter) param;
-                            System.out.println("\tquery parm type= " + qp.getType());
-                            paramType = qp.getType();
-                        }
+						if (param instanceof QueryParameter) {
+							QueryParameter qp = (QueryParameter) param;
+							// System.out.println("\tquery parm type= " + qp.getType());
+							paramType = qp.getType();
+						}
 
-                        if (param instanceof PathParameter) {
-                            PathParameter pp = (PathParameter) param;
-                            System.out.println("\tpath parm type= " + pp.getType());
-                            paramType = pp.getType();
-                        }
-
+						if (param instanceof PathParameter) {
+							PathParameter pp = (PathParameter) param;
+							// System.out.println("\tpath parm type= " + pp.getType());
+							paramType = pp.getType();
+						}
 
 						paramLines.add(new String[] { "com.ldm.custom.swaggerapiv2.Parameter",
 								createEICID(swagger.getInfo().getTitle()) + SLASH + createEICID(tagName) + SLASH
@@ -323,15 +340,15 @@ public class SwaggerParserTest {
 								createEICID(swagger.getInfo().getTitle()) + SLASH + createEICID(tagName) + SLASH
 										+ createEICID(opName) + SLASH + createEICID(param.getName()), });
 
-						System.out.println(param.getName());
-						System.out.println(param.getDescription());
-						System.out.println(param.getIn());
-						System.out.println(param.getRequired());
+						// System.out.println(param.getName());
+						// System.out.println(param.getDescription());
+						// System.out.println(param.getIn());
+						// System.out.println(param.getRequired());
 
 						// Schema schema = param.getSchema();
-						System.out.println(param.getClass().getSimpleName());
-						System.out.println(paramType);
-						System.out.println("=====<>=====");
+						// System.out.println(param.getClass().getSimpleName());
+						// System.out.println(paramType);
+						// System.out.println("=====<>=====");
 					}
 				}
 
@@ -340,7 +357,7 @@ public class SwaggerParserTest {
 					// for (Map.Entry<String, Response> response : responses.entrySet()) {
 					for (String responseName : responses.keySet()) {
 
-						System.out.println(responseName);
+						// System.out.println(responseName);
 						Response response = responses.get(responseName);
 
 						responseLines.add(new String[] { "com.ldm.custom.swaggerapiv2.Response",
@@ -353,12 +370,12 @@ public class SwaggerParserTest {
 								createEICID(swagger.getInfo().getTitle()) + SLASH + createEICID(tagName) + SLASH
 										+ createEICID(opName) + SLASH + createEICID(responseName), });
 
-						System.out.println(response.getDescription());
+						// System.out.println(response.getDescription());
 						// System.out.println(response.getContent());
-						System.out.println("==========");
+						// System.out.println("==========");
 					}
 				}
-				System.out.println("==========");
+				// System.out.println("==========");
 			}
 
 		}
@@ -391,7 +408,14 @@ public class SwaggerParserTest {
 
 		zipFiles(fldrToWrite);
 		System.out.println("");
-		System.out.println("Scan complete");
+		System.out.println("Objects extracted");
+		System.out.println("tags      : " + tagLines.size());
+		System.out.println("endpoints : " + endpointLines.size());
+		System.out.println("parameters: " + paramLines.size());
+		System.out.println("responses : " + responseLines.size());
+		System.out.println("links     : " + linkLines.size());
+		System.out.println("");
+		System.out.println("Scan complete\n");
 
 	}
 
