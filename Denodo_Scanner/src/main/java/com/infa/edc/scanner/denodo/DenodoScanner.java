@@ -139,7 +139,7 @@ public class DenodoScanner extends GenericScanner {
             String encPwd = prop.getProperty("encryptedPwd", "");
             if (!encPwd.equals("")) {
                 System.out.println("\tusing encrypted password from encryptedPwd property");
-                if (pwd.length() > 0) {
+                if (pwd != null && pwd.length() > 0) {
                     System.out.println("replacing pwd with encryptedPwd");
                 }
                 pwd = EncryptionUtil.decryptString(encPwd);
