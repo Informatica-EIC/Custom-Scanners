@@ -1,5 +1,11 @@
 Version History/Changes for Denodo Scanner
 ------------------------------------------
+2022/09/21 - v 1.0.011
+- bugfix issue #48 - axon integration, core.dataSetUuid should be an empty string
+
+2022/05/04 - v 1.0.010
+- bugfix - removing dependencies on ibm library for encryting passwords (caused an error in some cases)
+
 2021/08/17 - v 1.0.0
 - version number now starting at 1.0 - for Informatica Network submission
 - bugfix issue #38 - external lineage for mysql was exporting null as the owning schema name

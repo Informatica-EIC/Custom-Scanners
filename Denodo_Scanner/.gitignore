@@ -3,7 +3,7 @@
 *test*.properties
 .classpath
 .project
-/*out/*.*
+/*out*/*.*
 .settings/*
 .vscode/*
 
