@@ -92,7 +92,7 @@ public class CDGCWriter {
                                         new BufferedWriter(new FileWriter(outFolder + "/" + TABLE_FILENAME)));
                         tableWriter.writeNext(new String[] { "core.externalId", "core.name", "core.reference",
                                         "core.assignable",
-                                        "core.description" }, APPLY_QUOTES_TO_ALL);
+                                        "core.description", "core.comment" }, APPLY_QUOTES_TO_ALL);
 
                         columnWriter = new CSVWriter(
                                         new BufferedWriter(new FileWriter(outFolder + "/" + TABLECOL_FILENAME)));
@@ -100,13 +100,14 @@ public class CDGCWriter {
                                         "core.assignable",
                                         "com.infa.odin.models.relational.Datatype",
                                         "com.infa.odin.models.relational.DatatypeLength",
-                                        "com.infa.odin.models.relational.Position",
+                                        "core.Position",
                                         "core.description" }, APPLY_QUOTES_TO_ALL);
 
                         viewWriter = new CSVWriter(new BufferedWriter(new FileWriter(outFolder + "/" + VIEW_FILENAME)));
                         viewWriter.writeNext(new String[] { "core.externalId", "core.name", "core.reference",
                                         "core.assignable",
-                                        "core.description", RELATIONAL_PACKAGE + ".sourceStatementText" },
+                                        "core.description", "core.comment",
+                                        RELATIONAL_PACKAGE + ".sourceStatementText" },
                                         APPLY_QUOTES_TO_ALL);
 
                         viewColumnWriter = new CSVWriter(
@@ -115,7 +116,7 @@ public class CDGCWriter {
                                         "core.assignable",
                                         "com.infa.odin.models.relational.Datatype",
                                         "com.infa.odin.models.relational.DatatypeLength",
-                                        "com.infa.odin.models.relational.Position",
+                                        "core.Position",
                                         "core.description", "com.infa.odin.models.relational.expression" },
                                         APPLY_QUOTES_TO_ALL);
 
@@ -230,7 +231,7 @@ public class CDGCWriter {
                 System.out.println("\tcreating database: " + dbName);
 
                 try {
-                        dbWriter.writeNext(new String[] { dbName, "", "TRUE", dbName, "desc with, comma" },
+                        dbWriter.writeNext(new String[] { dbName, "", "TRUE", dbName, "" },
                                         APPLY_QUOTES_TO_ALL);
 
                         // dbCount++;
@@ -265,7 +266,8 @@ public class CDGCWriter {
                 String tabId = schId + "/" + table;
 
                 try {
-                        this.tableWriter.writeNext(new String[] { tabId, table, "", "", desc }, APPLY_QUOTES_TO_ALL);
+                        this.tableWriter.writeNext(new String[] { tabId, table, "", "", desc, location },
+                                        APPLY_QUOTES_TO_ALL);
                         this.linksWriter.writeNext(new String[] { schId, tabId, RELATIONAL_PACKAGE + ".SchemaToTable" },
                                         APPLY_QUOTES_TO_ALL);
                 } catch (Exception ex) {
@@ -303,7 +305,8 @@ public class CDGCWriter {
                 String tabId = schId + "/" + table;
 
                 try {
-                        this.viewWriter.writeNext(new String[] { tabId, table, "", "", desc, viewStatement.trim() },
+                        this.viewWriter.writeNext(
+                                        new String[] { tabId, table, "", "", desc, location, viewStatement.trim() },
                                         APPLY_QUOTES_TO_ALL);
                         this.linksWriter.writeNext(new String[] { schId, tabId, RELATIONAL_PACKAGE + ".SchemaToView" },
                                         APPLY_QUOTES_TO_ALL);
@@ -321,6 +324,12 @@ public class CDGCWriter {
                 String schId = dbName + "/" + schema;
                 String tabId = schId + "/" + table;
                 String colId = tabId + "/" + column;
+
+                // if the description fields is empty, and expression has a value - store the
+                // expression in the description
+                if (desc.length() == 0 && expr != null && expr.length() > 0) {
+                        desc = expr;
+                }
 
                 try {
                         this.viewColumnWriter.writeNext(
@@ -351,12 +360,27 @@ public class CDGCWriter {
                 // return
                 String wrappedSchema = wrapperObj.getSchema();
                 String wrappedTable = wrapperObj.getRelation();
+                String wrapperType = wrapperObj.getType();
 
-                System.out.println("creating ref objects for " + dbName + "." + schemaName + "." + tableName + " with "
+                System.out.println("creating CDGC ref objects for " + dbName + "." + schemaName + "." + tableName
+                                + " with "
                                 + columns.size() + "columns");
 
+                if (wrapperObj.getSqlSentance() != null) {
+                        // skip??
+                        System.out.print(" WARNING: sqlsentance found... no custom lineage created. ");
+                        return;
+                }
+
+                // also skip any non JDBC/ODBC
+                if (!wrapperType.equals("JDBC") && !wrapperType.equals("ODBC")) {
+                        System.out.println("skipping reference objects for type=" + wrapperType);
+                        return;
+                }
+
                 String conectionName = wrapperObj.getDataSource() + "__" + wrapperObj.getType();
-                System.out.println("connection name: " + conectionName);
+                System.out.println("connection name: " + conectionName + " wrappedSch=" + wrappedSchema
+                                + " wrappedTable=" + wrappedTable);
 
                 String dataSourceId = conectionName + "." + wrappedSchema;
                 // add schema data source only if not already there
@@ -374,7 +398,7 @@ public class CDGCWriter {
                 // create the datasource (schema), if not already created
                 if (!ref_datasources.contains(dataSourceId)) {
                         refDataSourceWriter.writeNext(new String[] { dataSourceId, "TRUE",
-                                        "TRUE", dataSourceId }, APPLY_QUOTES_TO_ALL);
+                                        "", dataSourceId }, APPLY_QUOTES_TO_ALL);
 
                         // add resource parent child for the datasource
                         linksWriter.writeNext(new String[] { conectionName, dataSourceId,
@@ -384,18 +408,17 @@ public class CDGCWriter {
                 }
                 // now look at the tables
                 String dataSetId = dataSourceId + "/" + wrappedTable;
-                String newdataSetId = wrappedSchema + "/" + wrappedTable;
+                // String newdataSetId = wrappedSchema + "/" + wrappedTable;
+                String newdataSetId = dataSetId;
                 String linkedDataSet = dbName + "/" + schemaName + "/" + tableName;
                 refDataSetWriter.writeNext(new String[] { newdataSetId, "TRUE",
                                 "", wrappedTable }, APPLY_QUOTES_TO_ALL);
-                linksWriter
-                                .writeNext(new String[] { dataSourceId, newdataSetId,
-                                                "core.DataSourceParentChild"
-                                });
+                linksWriter.writeNext(new String[] { dataSourceId, newdataSetId,
+                                "core.DataSourceParentChild"
+                });
 
-                linksWriter
-                                .writeNext(new String[] { newdataSetId, linkedDataSet, "core.DataSetDataFlow"
-                                });
+                linksWriter.writeNext(new String[] { newdataSetId, linkedDataSet, "core.DataSetDataFlow"
+                });
 
                 // contained columns...
                 for (String tgtCol : columns) {

@@ -35,7 +35,7 @@ import scanner_util.EncryptionUtil;
 import com.opencsv.CSVWriter;
 
 public class DenodoScanner extends GenericScanner {
-    public static final String version = "1.0.000";
+    public static final String version = "1.1.000";
 
     protected static String DISCLAIMER = "\n************************************ Disclaimer *************************************\n"
             + "By using the Denodo scanner, you are agreeing to the following:-\n"
@@ -79,7 +79,9 @@ public class DenodoScanner extends GenericScanner {
     protected List<Pattern> include_regex = new ArrayList<Pattern>();
 
     protected boolean doDebug = false;
-    protected boolean exportCustLineageInScanner = false;
+    // this flag is not needed any more - we always want to export connection
+    // assigments
+    protected boolean exportCustLineageInScanner = true;
 
     // schema to schema links
     Set<String> schemaSchemaLinks = new HashSet<String>();
@@ -94,6 +96,8 @@ public class DenodoScanner extends GenericScanner {
     protected int missingObjectCount = 0;
 
     protected CDGCWriter cdgcWriter = new CDGCWriter();
+
+    protected int viewBatchSize = 500;
 
     /**
      * experimental features skip_expr_collection view_query_filter
@@ -148,9 +152,12 @@ public class DenodoScanner extends GenericScanner {
             doDebug = Boolean.parseBoolean(prop.getProperty("debug", "false"));
             System.out.println("debug mode=" + doDebug);
 
-            exportCustLineageInScanner = Boolean.parseBoolean(prop.getProperty("include.custlineage", "false"));
-            System.out.println(
-                    "export custom lineage in scanner zip=" + exportCustLineageInScanner + " 10.2.2hf1+ feature");
+            // not reading the include.custlineage setting any more - assume always true
+            // exportCustLineageInScanner =
+            // Boolean.parseBoolean(prop.getProperty("include.custlineage", "true"));
+            // System.out.println(
+            // "export custom lineage in scanner zip=" + exportCustLineageInScanner + "
+            // 10.2.2hf1+ feature");
 
             // look for any tables to skip in ep.skipTables
             String epSkip = prop.getProperty("ep.skipobjects", "");
@@ -205,6 +212,15 @@ public class DenodoScanner extends GenericScanner {
                 System.out.println("include filter regex: " + include_regex);
             }
 
+            // view processing batch size
+            try {
+                viewBatchSize = Integer.parseInt(prop.getProperty("view_batch_size", "500"));
+            } catch (Exception e) {
+                System.out.println("error reading integer value from view_batch_size property.  value="
+                        + prop.getProperty("view_batch_size"));
+            } finally {
+                System.out.println("view batch size: " + viewBatchSize);
+            }
             /**
              * experimental features here
              */
@@ -652,179 +668,247 @@ public class DenodoScanner extends GenericScanner {
         try {
             // ResultSet rsViews = dbMetaData.getTables(schemaName, null, null, new String[]
             // { "VIEW" });
-            PreparedStatement viewMetadata = null;
-            String viewQuery = "SELECT database_name, name, type, user_creator, last_user_modifier, create_date, last_modification_date, description, view_type, folder "
-                    + "FROM GET_VIEWS() " + "WHERE input_database_name = ? and view_type>0 and input_name = ?";
-            viewMetadata = connection.prepareStatement(viewQuery);
-            viewMetadata.setString(1, schemaName);
-            viewMetadata.setString(2, view_query_filter);
+            // count the number of views
+            // int maxChunk = 500;
+            int offset = 0;
+
+            PreparedStatement countViewsStmnt = null;
+            String viewCountQuery = "SELECT count(*) as count FROM GET_VIEWS() WHERE input_database_name = ? and view_type>0 and input_name = ?";
+            countViewsStmnt = connection.prepareStatement(viewCountQuery);
+            countViewsStmnt.setString(1, schemaName);
+            countViewsStmnt.setString(2, view_query_filter);
             if (doDebug && debugWriter != null) {
-                debugWriter.println("getViews:\tprepared sql statement=" + viewQuery);
+                debugWriter.println("getViews:\tcounting views to process using =" + viewCountQuery);
+                debugWriter.flush();
+            }
+            ResultSet rsViewCounts = countViewsStmnt.executeQuery();
+            rsViewCounts.next();
+            int viewsCount = rsViewCounts.getInt("count");
+            System.out.println("\t\tviews found: " + viewsCount + " processing in chunks of " + viewBatchSize);
+            if (doDebug && debugWriter != null) {
+                debugWriter
+                        .println("getViews:\tviews to be processed=" + viewsCount + " in chunks of " + viewBatchSize);
                 debugWriter.flush();
             }
 
-            ResultSet rsViews = viewMetadata.executeQuery();
+            PreparedStatement viewMetadata = null;
+            String viewQuery = "SELECT database_name, name, type, user_creator, last_user_modifier, create_date, last_modification_date, description, view_type, folder "
+                    + "FROM GET_VIEWS() "
+                    + "WHERE input_database_name = ? and view_type>0 and input_name = ? offset ? rows limit ?";
 
-            // instead of calling standard jdbc - use this
-            // SELECT * FROM GET_VIEWS() WHERE input_database_name = '<catalogName>'
-            // will also return the view folder
+            List<String> viewsProcessed = new ArrayList<String>();
 
-            int viewCount = 0;
-            while (rsViews.next()) {
-                // jdbc standard call returns TABLE_NAME
-                // String viewName = rsViews.getString("TABLE_NAME");
+            while (offset < viewsCount) {
+                System.out.println("\tprocessing view batch: " + offset + " to " + (offset + viewBatchSize - 1));
 
-                // denodo GET_VIEWS() returns "name"
-                String viewName = rsViews.getString("name");
-                String viewType = rsViews.getString("view_type"); // 0=table, 1=view, 2=interface
-                String viewTypeName = "VIEW"; // default
-                if (viewType.equals("0")) {
-                    viewTypeName = "TABLE";
-                } else if (viewType.equals("2")) {
-                    viewTypeName = "INTERFACE VIEW";
-                } else if (viewType.equals("3")) {
-                    viewTypeName = "MATERIALIZED TABLE";
-                }
+                viewMetadata = connection.prepareStatement(viewQuery);
+                viewMetadata.setString(1, schemaName);
+                viewMetadata.setString(2, view_query_filter);
+                viewMetadata.setInt(3, offset);
+                viewMetadata.setInt(4, viewBatchSize);
+                // System.out.println("sql to execute for chunk\n" + viewQuery);
 
-                // check if the view is in the include list
-                String qualified_name_lc = schemaName.toLowerCase() + "." + viewName.toLowerCase();
-                if (this.include_regex.size() > 0 && !isa_regexes_match(include_regex, qualified_name_lc)) {
-                    // included = false;
-                    // System.out.println("object is not included in the scan, filtering out... " +
-                    // qualified_name_lc);
-                    filteredOutWriter.writeNext(new String[] { schemaName + "." + viewName, "not included" });
-                    System.out.print(".");
-                    objects_not_included++;
-                    continue;
-                }
-
-                // check if the object should be excluded (supercedes any include filter)
-                boolean excluded = this.isa_regexes_match(exclude_regex, qualified_name_lc);
-                if (excluded) {
-                    System.out.println("\t\t\texcluding object from scan " + qualified_name_lc);
-                    filteredOutWriter.writeNext(new String[] { schemaName + "." + viewName, "excluded" });
-                    this.objects_excluded.add(qualified_name_lc);
-                    this.objects_excluded_count++;
-                    continue;
-                }
-
-                if (epSkipViews.contains(schemaName.toLowerCase() + "." + viewName.toLowerCase())) {
-                    System.out.println("\t\textract view structure skipped for: " + schemaName + "." + viewName);
-                    objects_skipped.add(schemaName + "." + viewName);
-                    if (doDebug && debugWriter != null) {
-                        debugWriter.println("\textract view structure skipped for: " + schemaName + "." + viewName);
-                        debugWriter.flush();
-                    }
-                    continue;
-                }
-
-                viewCount++;
-
-                // MATERIALIZED TABLE
-
-                List<String> values = viewDbNameMap.get(schemaName);
-                if (values == null) {
-                    values = new ArrayList<String>();
-                }
-                values.add(viewName);
-                viewDbNameMap.put(schemaName, values);
-                datasetsScanned.add(schemaName + "/" + viewName);
-
-                // System.out.println("found one...");
-                System.out.print("\t\t" + rsViews.getString("database_name") + "." + viewName + " TABLE_TYPE="
-                        + rsViews.getString("view_type")
-                // + " comments=" + rsViews.getString("description")
-                );
-                // System.out.println(rsTables.getMetaData().getColumnTypeName(5));
                 if (doDebug && debugWriter != null) {
-                    debugWriter.println("getViews\t" + " catalog=" + rsViews.getString("database_name") + " viewname="
-                            + viewName + " TABLE_TYPE=" + rsViews.getString("view_type") + " comments="
-                            + rsViews.getString("description"));
+                    debugWriter.println("getViews:\tprepared sql statement=" + viewQuery + " offset=" + offset
+                            + ", limit=" + viewBatchSize);
                     debugWriter.flush();
                 }
 
-                // get the view sql
-                String viewSQL = "desc vql view \"" + schemaName + "\".\"" + viewName + "\"";
-                // PreparedStatement wrapperStmnt = null;
-                // String wrapperQuery = "DESC VQL WRAPPER JDBC ";
-                String viewSqlStmnt = "";
-                try {
-                    Statement stViewSql = connection.createStatement();
-                    ResultSet rs = stViewSql.executeQuery(viewSQL);
-                    while (rs.next()) {
-                        // System.out.println("\t\twrapper.....");
-                        // System.out.println("view sql^^^^=" + viewSQL);
-                        viewSqlStmnt = rs.getString("result");
+                ResultSet rsViews = viewMetadata.executeQuery();
 
-                        // @ todo - extract only the view definition - denodo also incudea all dependent
-                        // objects
-                        // System.out.println("viewSQL=\n" + result);
+                // instead of calling standard jdbc - use this
+                // SELECT * FROM GET_VIEWS() WHERE input_database_name = '<catalogName>'
+                // will also return the view folder
 
-                        // @todo @important - get the wrapper typoe (DF JDBC WF ...
+                while (rsViews.next()) {
+                    // jdbc standard call returns TABLE_NAME
+                    // String viewName = rsViews.getString("TABLE_NAME");
 
-                        String createStr = "CREATE " + viewTypeName + " " + viewName;
-                        // @todo - rewrite to use regex - looking for surrounding quotes or not
-                        if (!viewName.toLowerCase().equals(viewName) | viewName.contains(".") | viewName.contains("$")
-                                | viewName.contains("/") | viewName.contains("-") | viewName.contains("+")) {
-                            // there are mixed case characters - surround with "
-                            createStr = "CREATE " + viewTypeName + " \"" + viewName + "\"";
-                        }
-                        int dsStart = viewSqlStmnt.indexOf(createStr);
-                        // System.out.println("start pos=" + dsStart + " total length=" +
-                        // viewSqlStmnt.length());
-                        if (dsStart > -1) {
-                            // int dsEnd = viewSqlStmnt.indexOf(");\n", dsStart);
-                            int dsEnd = viewSqlStmnt.indexOf(";\n", dsStart);
-                            // System.out.println("start end=" + dsEnd + " total length=" +
-                            // viewSqlStmnt.length());
-                            // viewSqlStmnt = "";
-                            try {
-                                viewSqlStmnt = viewSqlStmnt.substring(dsStart, dsEnd + 3);
-                            } catch (Exception ex) {
-
-                            }
-                            // System.out.println(viewSqlStmnt);
-                        } else {
-                            // store the whole string
-                            System.out.println("\n\n\n\nERROR: can't find start of " + viewTypeName + " " + createStr
-                                    + "\n\n\n\n\n\n");
-                        }
-                        /// int dsEnd = result.indexOf("\n", dsStart);
-                        // System.out.println("start end=" + dsEnd + " total length=" +
-                        // result.length());
-                        /// if (dsStart>0 && dsEnd < result.length()) {
-                        /// connectionName = result.substring(dsStart+15, dsEnd);
-                        /// }
+                    // denodo GET_VIEWS() returns "name"
+                    String viewName = rsViews.getString("name");
+                    viewsProcessed.add(viewName);
+                    String viewType = rsViews.getString("view_type"); // 0=table, 1=view, 2=interface
+                    String viewTypeName = "VIEW"; // default
+                    if (viewType.equals("0")) {
+                        viewTypeName = "TABLE";
+                    } else if (viewType.equals("1")) {
+                        viewTypeName = "VIEW";
+                    } else if (viewType.equals("2")) {
+                        viewTypeName = "INTERFACE VIEW";
+                    } else if (viewType.equals("3")) {
+                        viewTypeName = "MATERIALIZED TABLE";
                     }
-                } catch (SQLException e) {
-                    descVQLErrors++;
-                    System.out.println("getViews: error executing query: " + viewSQL + "\n\t" + e.getMessage());
+
+                    // check if the view is in the include list
+                    String qualified_name_lc = schemaName.toLowerCase() + "." + viewName.toLowerCase();
+                    if (this.include_regex.size() > 0 && !isa_regexes_match(include_regex, qualified_name_lc)) {
+                        // included = false;
+                        // System.out.println("object is not included in the scan, filtering out... " +
+                        // qualified_name_lc);
+                        filteredOutWriter.writeNext(new String[] { schemaName + "." + viewName, "not included" });
+                        System.out.print(".");
+                        objects_not_included++;
+                        continue;
+                    }
+
+                    // check if the object should be excluded (supercedes any include filter)
+                    boolean excluded = this.isa_regexes_match(exclude_regex, qualified_name_lc);
+                    if (excluded) {
+                        System.out.println("\t\t\texcluding object from scan " + qualified_name_lc);
+                        filteredOutWriter.writeNext(new String[] { schemaName + "." + viewName, "excluded" });
+                        this.objects_excluded.add(qualified_name_lc);
+                        this.objects_excluded_count++;
+                        continue;
+                    }
+
+                    if (epSkipViews.contains(schemaName.toLowerCase() + "." + viewName.toLowerCase())) {
+                        System.out.println("\t\textract view structure skipped for: " + schemaName + "." + viewName);
+                        objects_skipped.add(schemaName + "." + viewName);
+                        if (doDebug && debugWriter != null) {
+                            debugWriter.println("\textract view structure skipped for: " + schemaName + "." + viewName);
+                            debugWriter.flush();
+                        }
+                        continue;
+                    }
+
+                    // viewCount++;
+
+                    // MATERIALIZED TABLE
+
+                    List<String> values = viewDbNameMap.get(schemaName);
+                    if (values == null) {
+                        values = new ArrayList<String>();
+                    }
+                    values.add(viewName);
+                    viewDbNameMap.put(schemaName, values);
+                    datasetsScanned.add(schemaName + "/" + viewName);
+
+                    // System.out.println("found one...");
+                    System.out.print("\t\t" + rsViews.getString("database_name") + "." + viewName + " TABLE_TYPE="
+                            + rsViews.getString("view_type")
+                    // + " comments=" + rsViews.getString("description")
+                    );
+                    // System.out.println(rsTables.getMetaData().getColumnTypeName(5));
                     if (doDebug && debugWriter != null) {
-                        debugWriter.println("getViews: error executing query: " + viewSQL + "\n\t" + e.getMessage());
-                        debugWriter.println("getViews - Exception");
-                        e.printStackTrace(debugWriter);
+                        debugWriter
+                                .println("getViews\t" + " catalog=" + rsViews.getString("database_name") + " viewname="
+                                        + viewName + " TABLE_TYPE=" + rsViews.getString("view_type") + " comments="
+                                        + rsViews.getString("description"));
                         debugWriter.flush();
                     }
+                    // get the view sql
+                    String viewSQL = "desc vql view \"" + schemaName + "\".\"" + viewName + "\"";
+                    // + "('includeDependencies' = 'no')";
 
-                    // e.printStackTrace();
+                    // PreparedStatement wrapperStmnt = null;
+                    // String wrapperQuery = "DESC VQL WRAPPER JDBC ";
+                    String viewSqlStmnt = "";
+
+                    try {
+                        Statement stViewSql = connection.createStatement();
+                        ResultSet rs = stViewSql.executeQuery(viewSQL);
+                        while (rs.next()) {
+                            // System.out.println("\t\twrapper.....");
+                            // System.out.println("view sql^^^^=" + viewSQL);
+                            viewSqlStmnt = rs.getString("result");
+
+                            // @ todo - extract only the view definition - denodo also incudea all dependent
+                            // objects
+                            // System.out.println("viewSQL=\n" + result);
+
+                            // @todo @important - get the wrapper typoe (DF JDBC WF ...
+
+                            // materialzed table and interface views have different syntax than derived
+                            String createStr = "CREATE VIEW " + viewName;
+                            if (viewType.equals("2") | viewType.equals("3")) {
+                                createStr = "CREATE " + viewTypeName + " " + viewName;
+                            }
+
+                            // @todo - rewrite to use regex - looking for surrounding quotes or not
+                            if (!viewName.toLowerCase().equals(viewName)
+                                    | viewName.contains(".")
+                                    | viewName.contains("$")
+                                    | viewName.contains("/")
+                                    | viewName.contains("-")
+                                    | viewName.contains("+")
+                                    | viewName.contains(" ")) {
+                                // there are mixed case characters - surround with "
+                                createStr = "CREATE " + viewTypeName + " \"" + viewName + "\"";
+                            }
+                            int dsStart = viewSqlStmnt.indexOf(createStr);
+                            // System.out.println("start pos=" + dsStart + " total length=" +
+                            // viewSqlStmnt.length());
+                            if (dsStart > -1) {
+                                // int dsEnd = viewSqlStmnt.indexOf(");\n", dsStart);
+                                int dsEnd = viewSqlStmnt.indexOf(";\n", dsStart);
+                                // System.out.println("start end=" + dsEnd + " total length=" +
+                                // viewSqlStmnt.length());
+                                // viewSqlStmnt = "";
+                                try {
+                                    viewSqlStmnt = viewSqlStmnt.substring(dsStart, dsEnd + 3);
+                                } catch (Exception ex) {
+
+                                }
+                                // System.out.println(viewSqlStmnt);
+                            } else {
+                                // store the whole string
+                                System.out
+                                        .println("\n\n\n\nERROR: can't find start of " + viewTypeName + " " + createStr
+                                                + "\n\n\n\n\n\n");
+                            }
+                            /// int dsEnd = result.indexOf("\n", dsStart);
+                            // System.out.println("start end=" + dsEnd + " total length=" +
+                            // result.length());
+                            /// if (dsStart>0 && dsEnd < result.length()) {
+                            /// connectionName = result.substring(dsStart+15, dsEnd);
+                            /// }
+                        }
+                    } catch (SQLException e) {
+                        descVQLErrors++;
+                        System.out.println("getViews: error executing query: " + viewSQL + "\n\t" + e.getMessage());
+                        if (doDebug && debugWriter != null) {
+                            debugWriter
+                                    .println("getViews: error executing query: " + viewSQL + "\n\t" + e.getMessage());
+                            debugWriter.println("getViews - Exception");
+                            e.printStackTrace(debugWriter);
+                            debugWriter.flush();
+                        }
+
+                        // e.printStackTrace();
+                    }
+
+                    // viewSqlStmnt = ""; // delete for validation testing
+                    this.createView(catalogName, schemaName, viewName, rsViews.getString("description"), viewSqlStmnt,
+                            rsViews.getString("folder"));
+                    cdgcWriter.createView(catalogName, schemaName, viewName, rsViews.getString("description"),
+                            viewSqlStmnt,
+                            rsViews.getString("folder"));
+
+                    // for denodo - we want to document the expression formula for any calculated
+                    // fields
+                    // so for this table - we will store in memory -
+                    if (!skip_expr_collection) {
+                        storeTableColExpressions(schemaName, viewName);
+                    }
+
+                    // possible bug - calling getColumns for table (for views) fails after 1000 of
+                    // them
+                    // maybe some form of query limit
+                    getColumnsForTable(catalogName, schemaName, viewName, true);
+
                 }
 
-                // viewSqlStmnt = ""; // delete for validation testing
-                this.createView(catalogName, schemaName, viewName, rsViews.getString("description"), viewSqlStmnt,
-                        rsViews.getString("folder"));
-                cdgcWriter.createView(catalogName, schemaName, viewName, rsViews.getString("description"), viewSqlStmnt,
-                        rsViews.getString("folder"));
+                // increment offset (for next chunk)
+                offset = offset + viewBatchSize;
 
-                // for denodo - we want to document the expression formula for any calculated
-                // fields
-                // so for this table - we will store in memory -
-                if (!skip_expr_collection) {
-                    storeTableColExpressions(schemaName, viewName);
-                }
-
-                getColumnsForTable(catalogName, schemaName, viewName, true);
             }
-            System.out.println("\tViews extracted: " + viewCount);
+            System.out.println("\tViews extracted: " + viewsCount);
+
+            // try to get all view columns now - vs within the view itself...
+            // for (String viewName : viewsProcessed) {
+            // System.out.println("\tViews columns for : " + viewName);
+            // getColumnsForTable(catalogName, schemaName, viewName, true);
+            // }
 
             // collect for later 0 tge
 
@@ -1788,27 +1872,23 @@ public class DenodoScanner extends GenericScanner {
             linksWriter.writeNext(new String[] { "association", "fromObjectIdentity", "toObjectIdentity" });
             filteredOutWriter.writeNext(new String[] { "object", "filter type" });
 
-            String outFolder = customMetadataFolder + "_lineage";
-            String lineageFileName = outFolder + "/" + "denodo_lineage.csv";
-            if (exportCustLineageInScanner) {
-                lineageFileName = customMetadataFolder + "/" + "lineage.csv";
-            }
-            System.out.println("Step 3.1: initializing denodo specific files: " + lineageFileName);
-            directory = new File(String.valueOf(outFolder));
-            if (!directory.exists()) {
-                System.out.println("\tfolder: " + outFolder + " does not exist, creating it");
-                directory.mkdir();
-            }
+            String lineageFileName = customMetadataFolder + "/" + "lineage.csv";
+            // System.out.println("Step 3.1: initializing denodo specific files: " +
+            // lineageFileName);
             // otherObjWriter = new CSVWriter(new FileWriter(otherObjectCsvName), ',',
             // CSVWriter.NO_QUOTE_CHARACTER);
             custLineageWriter = new CSVWriter(new FileWriter(lineageFileName));
-            if (exportCustLineageInScanner) {
-                custLineageWriter.writeNext(new String[] { "Association", "From Connection", "To Connection",
-                        "From Object", "To Object", "com.infa.ldm.etl.ETLContext" });
-            } else {
-                custLineageWriter.writeNext(
-                        new String[] { "Association", "From Connection", "To Connection", "From Object", "To Object" });
-            }
+            custLineageWriter.writeNext(new String[] { "Association", "From Connection", "To Connection",
+                    "From Object", "To Object", "com.infa.ldm.etl.ETLContext" });
+            // if (exportCustLineageInScanner) {
+            // custLineageWriter.writeNext(new String[] { "Association", "From Connection",
+            // "To Connection",
+            // "From Object", "To Object", "com.infa.ldm.etl.ETLContext" });
+            // // } else {
+            // // custLineageWriter.writeNext(
+            // // new String[] { "Association", "From Connection", "To Connection", "From
+            // // Object", "To Object" });
+            // }
 
             System.out.println("\tDenodo Scanner Files initialized");
 

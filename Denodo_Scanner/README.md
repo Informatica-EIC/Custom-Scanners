@@ -1,21 +1,37 @@
 # DENODO VDP custom scanner for Enterprise Data Catalog
 
-## Denodo Custom Scanner for EDC - Capabilities
+### NOTE:  Permissions in Denodo
+
+To ensure full lineage - denodo requires WRITE permissions.  (yes, it is strange)
+
+the scanner parses the vql for datasources to identify the lineage associations to the source metadata.  the only way to do this is to have WRITE permissions on these objects
+
+for more information from the Denodo documentation: https://community.denodo.com/docs/html/browse/8.0/en/vdp/administration/databases_users_and_access_rights_in_virtual_dataport/user_and_access_right_in_virtual_dataport/user_and_access_right_in_virtual_dataport#write-privilege
+
+this section has the following statement, for WRITE privileges:-
+- View the VQL of data sources, views, stored procedures, JMS listeners, web services (REST and SOAP) and widgets.
+
+---
+
+## Denodo Custom Scanner for CDGC and EDC - Capabilities
 
 * uses denodo jdbc driver to scan denodo virtual tables/views, including lineage inside and outside of denodo
 * can scan multiple denodo databases (these are actually more like schemas for other databsae types)
 * will extract lineage between views within denodo, at both the view & column level
 * expression fields are processed - lineage should be created to all referenced source fields
-    * the expression logic is stored in the "View Statement" system attribute `com.infa.ldm.relational.ViewStatement`
-* for relational sources, and local delimited files, custom lineage is generated to link source tables/views to the actual dbms tables/views via connection assignment
-* works with Denodo 7 or 8 - to ensure that it works for your version, replace `lib/denodo-vdp-jdbcdriver.jar` provided with the scanner, with your denodo jdbc driver jar file  (note:  you cannot use a denodo 7 jdbc driver with v8, or a v8 driver with v7).  v7 is packaged with the scanner
+    * the expression logic is stored in the "View Statement" system attribute `com.infa.ldm.relational.ViewStatement` for EDC and `com.infa.odin.models.relational.expression` for CDGC
+    * in CDGC, if a field has an expression and does not have a description, the expression will also be stored as the description (for easier identification of expression fields in lineage)
+* for relational sources, and local delimited files, reference object lineage is generated to link source tables/views to the actual dbms tables/views via connection assignment
+* works with Denodo 7 or 8 - to ensure that it works for your version, replace `lib/denodo-vdp-jdbcdriver.jar` provided with the scanner, with your denodo jdbc driver jar file  (note:  you cannot use a denodo 7 jdbc driver with v8, or a v8 driver with v7).  v8 is packaged with the scanner
 
+
+---
 
 This document describes how to setup/use the Denodo Virtual Data Port Scanner.
 
-The scanner is based on the standard relational database model `com.infa.ldm.relational`
+The scanner is based on the standard relational database model `com.infa.ldm.relational` for EDC an `com.infa.odin.models.relational` for CDGC.
 
-Denodo is a data virtualization product and can be accessed via a JDBC Driver.  Since denodo acts a little differently to standard relational databases, we cannot use the generic JDBC scanner for Denodo.
+Denodo is a data virtualization product and can be accessed via a JDBC Driver.  Since denodo acts a little differently to standard relational databases, we cannot use the generic JDBC scanner for Denodo.  (you can, but it will not extract any lineage)
 
 In Denodo, there is no concept of a schema - only Databases, Tables and Columns.  To represent these properly in the catalog, *AND* provide the right structure for linking, we need to store both database and schema objects.
 
@@ -27,7 +43,9 @@ Since Denodo is a virtual layer - we also need to generate the lineage links bac
 
 
 
-## Download the Scanner - from Github
+## Download the Scanner - from Informatica MarketPlace or Github 
+
+from Informatica Marketplace - click here to download. https://marketplace.informatica.com/listings/cloud/solutions/denodo-scanner-for-edc.html
 
 you can download from this link https://github.com/Informatica-EIC/Custom-Scanners/blob/master/Denodo_Scanner/packaged/DenodoScanner.zip?raw=true
 
@@ -38,16 +56,24 @@ wget -O DenodoScanner.zip https://github.com/Informatica-EIC/Custom-Scanners/blo
 
 unzip the DenodoScanner.zip file & follow the steps below
 
-
+---
 
 ## Configuring the Denodo Scanner
 
-1 - (one time) create a resource-type for Denodo
+### EDC Custom Resource Type Configuration
+1 EDC - (one time) create a resource-type for Denodo
   * from ldmadmin ui - select Manage | Custom Resource Types
   * click + to create a new Custom Resource type (if not already created)
   * Name=DenodoScanner  (changing the name is ok - this name)
   * Model=com.infa.ldm.relational  (browse to select only this model)
   * Connection Types=Database (for linking, no need to select schema)
+
+### CDGC Custom Resource Type Configuration
+1 CDGC - (one time) create a resource-type for Denodo.  
+  * From metadata command center, select Customizations & then open the Custom Catalog Source Types tab
+  * click the + icon to create a new custome source type - e.g. name=Denodo Custom, description="custom scanner for Denodo Data Virtualization"
+
+
 
 2 - optional - setup an encryped password
     start the scanner passing only "password" as the first parameter
@@ -96,8 +122,8 @@ unzip the DenodoScanner.zip file & follow the steps below
 
   * `scanDenodo.sh <propertyFile> [agreeToDisclaimer]`
   * output will be written to the folder referenced in denodo.properties (setting: `customMetadata.folder`) and will be named `denodoScanner.zip`
+  * for CDCG scans, output will be written to `customMetadata.folder`_CDGC and will be named `denodo_scanner_cdgc.zip`
   * if the folder does not exist, it will be created (assuming the user has permissions to do so)
-  * for older EDC versions (before v10.2.2hf1) custom lineage can be exported to folder referenced in denodo.properties (setting: `<customMetadata.folder>_lineage/denodo_lineage.csv`), using setting `include.custlineage=false`
 
 
 5 - create a denodo resource
@@ -119,6 +145,8 @@ you can export the denodo certificate into any trustore in a .jks format (for ja
 set values for
   - SCANNER_TRUSTSTORE=<truststore_file.jks>
   - SCANNER_TRUSTSTORE_PWD=<password for truststore>
+
+note:  the sample script files do not have a default password set for SCANNER_TRUSTSTORE_PWD
 
 ### Running the Denodo Scanner
 
