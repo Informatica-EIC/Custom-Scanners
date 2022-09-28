@@ -1,5 +1,12 @@
 Version History/Changes for Denodo Scanner
 ------------------------------------------
+2022/09/27 - v1.1.000
+- added support for CDGC, in addition to EDC scanning.  will create a <outfolder>_CDGC to store cdgc metadata for import
+- bugfix issue #45 - scanner was hanging when a single database had over 1000 views to process.  re-factored to process in chunks (using limit and offset). 
+  - added new .properties setting view_batch_size with default value=500  (do not set to over 1000)
+- bugfix - tables/views with spaces in the name had issues extracting sql syntax
+- removed obsolete setting from properties file: include.custlineage.  that value is assumed to always be true (for edc, it will generate lineage.csv for connection assignment)
+
 2022/09/21 - v 1.0.011
 - bugfix issue #48 - axon integration, core.dataSetUuid should be an empty string
 
