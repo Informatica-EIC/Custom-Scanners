@@ -735,17 +735,20 @@ public class GenericScanner implements IJdbcScanner {
             String pos, String desc, boolean isView) {
 
         String schId = dbName + "/" + schema;
+        // bugfix: https://github.com/Informatica-EIC/Custom-Scanners/issues/48
+        // core.datasetUUid should be empty sting ""
         String tabId = schId + "/" + table;
         String colId = tabId + "/" + column;
+        String uuId = "";
 
         try {
             if (!isView) {
-                this.columnWriter.writeNext(new String[] { COL_TYPE, colId, column, type, length, pos, tabId, desc });
+                this.columnWriter.writeNext(new String[] { COL_TYPE, colId, column, type, length, pos, uuId, desc });
                 colCount++;
                 this.linksWriter.writeNext(new String[] { "com.infa.ldm.relational.TableColumn", tabId, colId });
             } else {
                 this.viewColumnWriter
-                        .writeNext(new String[] { VIEWCOL_TYPE, colId, column, type, length, pos, tabId, desc });
+                        .writeNext(new String[] { VIEWCOL_TYPE, colId, column, type, length, pos, uuId, desc });
                 vwColCount++;
                 this.linksWriter.writeNext(new String[] { "com.infa.ldm.relational.ViewViewColumn", tabId, colId });
             }
@@ -763,10 +766,13 @@ public class GenericScanner implements IJdbcScanner {
         String schId = dbName + "/" + schema;
         String tabId = schId + "/" + table;
         String colId = tabId + "/" + column;
+        // bugfix: https://github.com/Informatica-EIC/Custom-Scanners/issues/48
+        // core.datasetUUid should be empty string ""
+        String uuId = "";
 
         try {
             this.viewColumnWriter.writeNext(
-                    new String[] { VIEWCOL_TYPE, colId, column, type, length, pos, tabId, expression, desc });
+                    new String[] { VIEWCOL_TYPE, colId, column, type, length, pos, uuId, expression, desc });
             vwColCount++;
             this.linksWriter.writeNext(new String[] { "com.infa.ldm.relational.ViewViewColumn", tabId, colId });
         } catch (Exception ex) {
