@@ -6,4 +6,7 @@
 /*out*/*.*
 .settings/*
 .vscode/*
+denodo_local*.properties
+denodo_server*.properties
+test_libs/*
 
