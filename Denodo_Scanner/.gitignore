@@ -9,4 +9,6 @@
 denodo_local*.properties
 denodo_server*.properties
 test_libs/*
-
+test*.cmd
+packaged/Denodo-Custom-Scanner-*.zip
+Denodo Custom Scanner v*.pdf

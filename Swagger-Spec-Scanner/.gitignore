@@ -3,3 +3,7 @@ output/*
 lib/*
 packaged/*
 target/*
+*.csv
+/mvn*
+.mvn
+.vscode

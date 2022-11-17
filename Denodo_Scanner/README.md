@@ -266,3 +266,9 @@ and after importing into EDC - also showing that `amount_due_by_client` is also 
 expanding amount_due_by_client at the field level
 
 <img src="images/edc_amount_due_by_client_fields.png">
+
+CDGC Examples:
+
+<img src="images/cdgc_amount_due_by_client.png">
+
+<img src="images/cdgc_amount_due_by_client_fields.png">
