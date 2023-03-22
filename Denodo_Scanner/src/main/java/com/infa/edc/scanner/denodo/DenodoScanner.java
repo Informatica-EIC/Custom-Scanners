@@ -78,6 +78,8 @@ public class DenodoScanner extends GenericScanner {
     protected List<String> include_objects = new ArrayList<String>();
     protected List<Pattern> include_regex = new ArrayList<Pattern>();
 
+    protected boolean includeUuidCols = false;
+
     protected boolean doDebug = false;
     // this flag is not needed any more - we always want to export connection
     // assigments
@@ -221,6 +223,18 @@ public class DenodoScanner extends GenericScanner {
             } finally {
                 System.out.println("view batch size: " + viewBatchSize);
             }
+
+            // flag to include uuid processing (true|false, default false)
+            // if true - then the uuid fields will be added to csv files
+            // with empty values
+            String includeUUID = prop.getProperty("include_uuid_columns");
+            if (includeUUID != null) {
+                System.out.println("include_uuid_columns value from properties file: " + includeUUID);
+            }
+            this.includeUuidCols = Boolean.parseBoolean(prop.getProperty("include_uuid_columns", "false"));
+            // also set for the super class
+            super.includeUuidCols = includeUuidCols;
+
             /**
              * experimental features here
              */
@@ -1857,17 +1871,43 @@ public class DenodoScanner extends GenericScanner {
 
             otherObjWriter.writeNext(new String[] { "class", "identity", "core.name",
                     "com.infa.ldm.relational.StoreType", "com.infa.ldm.relational.SystemType" });
-            tableWriter.writeNext(new String[] { "class", "identity", "core.name", "core.description",
-                    "com.infa.ldm.relational.ViewStatement", "com.infa.ldm.relational.Location" });
-            viewWriter.writeNext(new String[] { "class", "identity", "core.name", "core.description",
-                    "com.infa.ldm.relational.ViewStatement", "com.infa.ldm.relational.Location" });
-            columnWriter.writeNext(new String[] { "class", "identity", "core.name", "com.infa.ldm.relational.Datatype",
-                    "com.infa.ldm.relational.DatatypeLength", "com.infa.ldm.relational.Position", "core.dataSetUuid",
-                    "core.description" });
-            viewColumnWriter
-                    .writeNext(new String[] { "class", "identity", "core.name", "com.infa.ldm.relational.Datatype",
-                            "com.infa.ldm.relational.DatatypeLength", "com.infa.ldm.relational.Position",
-                            "core.dataSetUuid", "com.infa.ldm.relational.ViewStatement", "core.description" });
+            // tableWriter.writeNext(new String[] { "class", "identity", "core.name",
+            // "core.description",
+            // "com.infa.ldm.relational.ViewStatement", "com.infa.ldm.relational.Location",
+            // "core.dataSourceUuid" });
+            // santander remove core.dataSourceUuid and core.ataSetUuid
+            if (includeUuidCols) {
+                tableWriter.writeNext(new String[] { "class", "identity", "core.name", "core.description",
+                        "com.infa.ldm.relational.ViewStatement", "com.infa.ldm.relational.Location",
+                        "core.dataSourceUuid" });
+                viewWriter.writeNext(new String[] { "class", "identity", "core.name", "core.description",
+                        "com.infa.ldm.relational.ViewStatement", "com.infa.ldm.relational.Location",
+                        "core.dataSourceUuid" });
+                columnWriter
+                        .writeNext(new String[] { "class", "identity", "core.name", "com.infa.ldm.relational.Datatype",
+                                "com.infa.ldm.relational.DatatypeLength", "com.infa.ldm.relational.Position",
+                                "core.dataSourceUuid",
+                                "core.dataSetUuid", "core.description" });
+                viewColumnWriter
+                        .writeNext(new String[] { "class", "identity", "core.name", "com.infa.ldm.relational.Datatype",
+                                "com.infa.ldm.relational.DatatypeLength", "com.infa.ldm.relational.Position",
+                                "core.dataSourceUuid", "core.dataSetUuid", "com.infa.ldm.relational.ViewStatement",
+                                "core.description" });
+            } else {
+                // remove the uuid columns
+                tableWriter.writeNext(new String[] { "class", "identity", "core.name", "core.description",
+                        "com.infa.ldm.relational.ViewStatement", "com.infa.ldm.relational.Location" });
+                viewWriter.writeNext(new String[] { "class", "identity", "core.name", "core.description",
+                        "com.infa.ldm.relational.ViewStatement", "com.infa.ldm.relational.Location" });
+                columnWriter
+                        .writeNext(new String[] { "class", "identity", "core.name", "com.infa.ldm.relational.Datatype",
+                                "com.infa.ldm.relational.DatatypeLength", "com.infa.ldm.relational.Position",
+                                "core.description" });
+                viewColumnWriter
+                        .writeNext(new String[] { "class", "identity", "core.name", "com.infa.ldm.relational.Datatype",
+                                "com.infa.ldm.relational.DatatypeLength", "com.infa.ldm.relational.Position",
+                                "com.infa.ldm.relational.ViewStatement", "core.description" });
+            }
 
             linksWriter.writeNext(new String[] { "association", "fromObjectIdentity", "toObjectIdentity" });
             filteredOutWriter.writeNext(new String[] { "object", "filter type" });
@@ -2086,9 +2126,16 @@ public class DenodoScanner extends GenericScanner {
 
         String schId = dbName + "/" + schema;
         String tabId = schId + "/" + table;
+        String datasourceUuid = "$etlres://" + schId;
+        datasourceUuid = "";
 
         try {
-            this.tableWriter.writeNext(new String[] { TAB_TYPE, tabId, table, desc, sql, location });
+            if (includeUuidCols) {
+                this.tableWriter
+                        .writeNext(new String[] { TAB_TYPE, tabId, table, desc, sql, location, datasourceUuid });
+            } else {
+                this.tableWriter.writeNext(new String[] { TAB_TYPE, tabId, table, desc, sql, location });
+            }
             tabCount++;
             this.linksWriter.writeNext(new String[] { "com.infa.ldm.relational.SchemaTable", schId, tabId });
         } catch (Exception ex) {

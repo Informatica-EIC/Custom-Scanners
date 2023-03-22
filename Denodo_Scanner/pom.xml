@@ -1,9 +1,11 @@
-<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+  xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
   <modelVersion>4.0.0</modelVersion>
 
   <groupId>com.infa.edc.scanner.denodo</groupId>
   <artifactId>DenodoScanner</artifactId>
-  <version>1.1.0-0-SNAPSHOT</version>
+  <version>1.1.010-SNAPSHOT</version>
 
   <build>
     <sourceDirectory>src/main/java</sourceDirectory>
@@ -57,7 +59,8 @@
               <descriptors>
                 <descriptor>src/main/assembly/zip.xml</descriptor>
               </descriptors>
-              <!-- we are not storing the version for the zip file - to allow for a single wget to get the latest version 
+              <!-- we are not storing the version for the zip file - to allow for a single wget to
+              get the latest version 
 							-->
               <finalName>${project.artifactId}</finalName>
               <outputDirectory>${project.basedir}/packaged</outputDirectory>
@@ -65,7 +68,8 @@
           </execution>
         </executions>
       </plugin>
-      <!-- also package a version for infa marketplace - with the version and no SNAPSHOT - version maually set for now -->
+      <!-- also package a version for infa marketplace - with the version and no SNAPSHOT - version
+      maually set for now -->
       <plugin>
         <groupId>com.coderplus.maven.plugins</groupId>
         <artifactId>copy-rename-maven-plugin</artifactId>
@@ -79,7 +83,7 @@
             </goals>
             <configuration>
               <sourceFile>${project.basedir}/packaged/${project.artifactId}.zip</sourceFile>
-              <destinationFile>${project.basedir}/packaged/Denodo-Custom-Scanner-1.1.000.zip</destinationFile>
+              <destinationFile>${project.basedir}/packaged/Denodo-Custom-Scanner-1.1.010.zip</destinationFile>
             </configuration>
           </execution>
         </executions>

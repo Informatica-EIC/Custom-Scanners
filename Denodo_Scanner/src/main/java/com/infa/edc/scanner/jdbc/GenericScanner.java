@@ -48,6 +48,8 @@ public class GenericScanner implements IJdbcScanner {
 
     protected String dbProductName;
 
+    protected boolean includeUuidCols = false;
+
     protected static String DISCLAIMER = "\n************************************ Disclaimer *************************************\n"
             + "By using this custom scanner, you are agreeing to the following:-\n"
             + "- this custom scanner is not officially supported by Informatica\n"
@@ -703,9 +705,15 @@ public class GenericScanner implements IJdbcScanner {
 
         String schId = dbName + "/" + schema;
         String tabId = schId + "/" + table;
+        String datasourceUuid = "$etlres://" + schId;
+        datasourceUuid = "";
 
         try {
-            this.tableWriter.writeNext(new String[] { TAB_TYPE, tabId, table, desc });
+            if (includeUuidCols) {
+                this.tableWriter.writeNext(new String[] { TAB_TYPE, tabId, table, desc, datasourceUuid });
+            } else {
+                this.tableWriter.writeNext(new String[] { TAB_TYPE, tabId, table, desc });
+            }
             tabCount++;
             this.linksWriter.writeNext(new String[] { "com.infa.ldm.relational.SchemaTable", schId, tabId });
         } catch (Exception ex) {
@@ -719,9 +727,17 @@ public class GenericScanner implements IJdbcScanner {
 
         String schId = dbName + "/" + schema;
         String tabId = schId + "/" + table;
+        String datasourceUuid = "$etlres://" + schId;
+        datasourceUuid = "";
 
         try {
-            this.viewWriter.writeNext(new String[] { VIEW_TYPE, tabId, table, desc, ddl, location });
+            if (includeUuidCols) {
+                this.viewWriter
+                        .writeNext(new String[] { VIEW_TYPE, tabId, table, desc, ddl, location, datasourceUuid });
+            } else {
+                this.viewWriter
+                        .writeNext(new String[] { VIEW_TYPE, tabId, table, desc, ddl, location });
+            }
             vwCount++;
             this.linksWriter.writeNext(new String[] { "com.infa.ldm.relational.SchemaView", schId, tabId });
         } catch (Exception ex) {
@@ -739,16 +755,35 @@ public class GenericScanner implements IJdbcScanner {
         // core.datasetUUid should be empty sting ""
         String tabId = schId + "/" + table;
         String colId = tabId + "/" + column;
-        String uuId = "";
+        String datasourceUuid = "$etlres://" + schId;
+        String dataSetUuid = "$etlres://" + tabId;
+        // String uuId = "";
+        datasourceUuid = "";
+        dataSetUuid = "";
 
         try {
             if (!isView) {
-                this.columnWriter.writeNext(new String[] { COL_TYPE, colId, column, type, length, pos, uuId, desc });
+                if (includeUuidCols) {
+                    this.columnWriter.writeNext(
+                            new String[] { COL_TYPE, colId, column, type, length, pos, datasourceUuid, dataSetUuid,
+                                    desc });
+                } else {
+                    this.columnWriter.writeNext(
+                            new String[] { COL_TYPE, colId, column, type, length, pos, desc });
+
+                }
                 colCount++;
                 this.linksWriter.writeNext(new String[] { "com.infa.ldm.relational.TableColumn", tabId, colId });
             } else {
-                this.viewColumnWriter
-                        .writeNext(new String[] { VIEWCOL_TYPE, colId, column, type, length, pos, uuId, desc });
+                if (includeUuidCols) {
+                    this.viewColumnWriter
+                            .writeNext(new String[] { VIEWCOL_TYPE, colId, column, type, length, pos, datasourceUuid,
+                                    dataSetUuid, desc });
+                } else {
+                    this.viewColumnWriter
+                            .writeNext(new String[] { VIEWCOL_TYPE, colId, column, type, length, pos, desc });
+
+                }
                 vwColCount++;
                 this.linksWriter.writeNext(new String[] { "com.infa.ldm.relational.ViewViewColumn", tabId, colId });
             }
@@ -768,11 +803,21 @@ public class GenericScanner implements IJdbcScanner {
         String colId = tabId + "/" + column;
         // bugfix: https://github.com/Informatica-EIC/Custom-Scanners/issues/48
         // core.datasetUUid should be empty string ""
-        String uuId = "";
+        String datasourceUuid = "$etlres://" + schId;
+        String dataSetUuid = "$etlres://" + tabId;
+        datasourceUuid = "";
+        dataSetUuid = "";
 
         try {
-            this.viewColumnWriter.writeNext(
-                    new String[] { VIEWCOL_TYPE, colId, column, type, length, pos, uuId, expression, desc });
+            if (includeUuidCols) {
+                this.viewColumnWriter.writeNext(
+                        new String[] { VIEWCOL_TYPE, colId, column, type, length, pos, datasourceUuid, dataSetUuid,
+                                expression, desc });
+            } else {
+                this.viewColumnWriter.writeNext(
+                        new String[] { VIEWCOL_TYPE, colId, column, type, length, pos, expression, desc });
+
+            }
             vwColCount++;
             this.linksWriter.writeNext(new String[] { "com.infa.ldm.relational.ViewViewColumn", tabId, colId });
         } catch (Exception ex) {
