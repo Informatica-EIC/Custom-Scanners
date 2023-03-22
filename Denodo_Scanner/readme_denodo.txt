@@ -1,5 +1,13 @@
 Version History/Changes for Denodo Scanner
 ------------------------------------------
+
+2023/03/22 - v1.1.010
+- minor update to EDC exporter for Axon integration
+  - add new property to scanner properties file
+    - include_uuid_columns=false|true  (default false)
+    - if true - core.dataSetUuid & core.dataSourceUuid columns will be added with empty values, if false - columns will not be added to .csv files
+    - when these columns are empty or missing, the custom scanner framework will add these automatically
+
 2022/09/27 - v1.1.000
 - added support for CDGC, in addition to EDC scanning.  will create a <outfolder>_CDGC to store cdgc metadata for import
 - bugfix issue #45 - scanner was hanging when a single database had over 1000 views to process.  re-factored to process in chunks (using limit and offset). 
