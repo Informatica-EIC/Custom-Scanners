@@ -35,7 +35,7 @@ import scanner_util.EncryptionUtil;
 import com.opencsv.CSVWriter;
 
 public class DenodoScanner extends GenericScanner {
-    public static final String version = "1.1.000";
+    public static final String version = "1.1.020-dev";
 
     protected static String DISCLAIMER = "\n************************************ Disclaimer *************************************\n"
             + "By using the Denodo scanner, you are agreeing to the following:-\n"
@@ -1186,6 +1186,15 @@ public class DenodoScanner extends GenericScanner {
                         if (values.length == 2) {
                             String leftDB = values[0];
                             String leftVW = values[1];
+
+                            // Issue #55
+                            if (leftDB == null || leftVW == null) {
+                                // print error for troubleshooting
+                                System.out.println(
+                                        "\t\tError: extractViewLevelLineageRefactored schema/table found for: "
+                                                + refdCol + " lineage will be missing");
+
+                            }
                             // System.out.println("\tready to link: " + leftDB + "." + leftVW);
 
                             String objKey = leftDB + "/" + leftVW;
@@ -1220,7 +1229,8 @@ public class DenodoScanner extends GenericScanner {
                                     // System.out.println("schema link ++++ " + schemaSchemaKey);
                                 }
                             } else {
-                                System.out.println("\t\textractViewLevelLineageRefactored lookup not found: " + objKey);
+                                System.out.println("\t\textractViewLevelLineageRefactored lookup not found: " + objKey
+                                        + " " + refdCol + " lineage will be missing");
                                 // this could happen when a table/view that is used by this view was filtered
                                 // out...
                                 missingObjectCount++;
@@ -1414,6 +1424,15 @@ public class DenodoScanner extends GenericScanner {
                     // System.out.println("!! Predefined Storedprocedure !!" + fromTab + " row="
                     // +recCount);
                     continue;
+                }
+
+                // issue #58
+                if (fromTab == null) {
+                    System.out.println(
+                            "ERROR: dependency_name (table name) from COLUMN_DEPENDENCIES procedure is null, cannot extract lineage");
+                    System.out.println("\tquery causing the issue: " + query);
+                    System.out.println("\tdb=" + dbName + " viewName=" + viewName);
+                    return;
                 }
 
                 // System.out.println("test " + (! dbName.equals(viewDB)) + " && " + (!

@@ -83,7 +83,7 @@
             </goals>
             <configuration>
               <sourceFile>${project.basedir}/packaged/${project.artifactId}.zip</sourceFile>
-              <destinationFile>${project.basedir}/packaged/Denodo-Custom-Scanner-1.1.010.zip</destinationFile>
+              <destinationFile>${project.basedir}/packaged/Denodo-Custom-Scanner-1.1.020dev.zip</destinationFile>
             </configuration>
           </execution>
         </executions>

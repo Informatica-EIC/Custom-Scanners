@@ -1,6 +1,15 @@
 Version History/Changes for Denodo Scanner
 ------------------------------------------
 
+2024/06/20 - v1.1.020 dev
+- bugfix issue #54 - NullPointerException raised when datafile has no file information. 
+- bugfix issue #56 - if table is null in JDBC Wrapper, wrong lineage was generated (now removed)
+- bugfix issue #57 - duplicate reference dataset/dataelements were creatd in some situations
+- bugfix issue #58 - add checking for null table name returned from COLUMN_DEPENDENCIES procedure
+                     since issue cannot be re-produced, cannot determine cause of issue
+                     lineage will be missing for instances of this issue
+
+
 2023/03/22 - v1.1.010
 - minor update to EDC exporter for Axon integration
   - add new property to scanner properties file
