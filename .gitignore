@@ -4,3 +4,6 @@ JDBC_Scanner/denodoScanner_debug\.txt
 JDBC_Scanner/denodo_custom_metadata_out/
 
 JDBC_Scanner/denodo_custom_metadata_out_lineage/
+JDBC_Scanner/packaged/jdbcCustomScanner/*out*/*.*
+JDBC_Scanner/packaged/jdbcCustomScanner/*chubb*/*.*
+Denodo_Scanner/*out*/**/*.*

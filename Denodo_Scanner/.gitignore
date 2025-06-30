@@ -4,6 +4,8 @@
 .classpath
 .project
 /*out*/*.*
+./*out*/*.*
+./*out/*.*
 .settings/*
 .vscode/*
 denodo_local*.properties

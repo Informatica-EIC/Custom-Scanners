@@ -303,9 +303,13 @@ public class Wrapper {
                 System.out.println("ERROR: null datasource???");
             } else {
                 if (this.dataSourceObj.getRoute() == null) {
-                    System.out.println("ERROR: null route in datasource???");
-
+                    System.out.println(
+                            " ERROR: null route(file path/url) in datasource - external lineage will not be generated for object");
                 }
+                // need to stop processing here, since the filename for the source is not
+                // available
+                // Issue: #54
+                return custLineageCount;
             }
             if (this.dataSourceObj.getRoute().equals("LOCAL")) {
                 String folder = dataSourceObj.getFolder();

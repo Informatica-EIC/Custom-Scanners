@@ -5,7 +5,7 @@
 
   <groupId>com.infa.edc.scanner.denodo</groupId>
   <artifactId>DenodoScanner</artifactId>
-  <version>1.1.010-SNAPSHOT</version>
+  <version>1.1.020-SNAPSHOT</version>
 
   <build>
     <sourceDirectory>src/main/java</sourceDirectory>
@@ -83,7 +83,7 @@
             </goals>
             <configuration>
               <sourceFile>${project.basedir}/packaged/${project.artifactId}.zip</sourceFile>
-              <destinationFile>${project.basedir}/packaged/Denodo-Custom-Scanner-1.1.010.zip</destinationFile>
+              <destinationFile>${project.basedir}/packaged/Denodo-Custom-Scanner-1.1.020.zip</destinationFile>
             </configuration>
           </execution>
         </executions>
@@ -98,7 +98,7 @@
     <dependency>
       <groupId>com.opencsv</groupId>
       <artifactId>opencsv</artifactId>
-      <version>5.6</version>
+      <version>5.9</version>
     </dependency>
     <dependency>
       <groupId>com.scanner-util</groupId>

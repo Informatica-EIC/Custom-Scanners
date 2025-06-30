@@ -52,6 +52,7 @@ public class CDGCWriter {
 
         private List<String> ref_resources = new ArrayList<String>();
         private List<String> ref_datasources = new ArrayList<String>();
+        private List<String> ref_datasetids = new ArrayList<String>();
 
         protected CDGCWriter() {
 
@@ -362,9 +363,12 @@ public class CDGCWriter {
                 String wrappedTable = wrapperObj.getRelation();
                 String wrapperType = wrapperObj.getType();
 
-                System.out.println("creating CDGC ref objects for " + dbName + "." + schemaName + "." + tableName
+                System.out.println(" creating CDGC ref objects for " + dbName + "." + schemaName + "." + tableName
                                 + " with "
-                                + columns.size() + "columns");
+                                + columns.size() + " columns."
+                                + " wrappedSchema=" + wrappedSchema
+                                + " wrappedTable=" + wrappedTable
+                                + " wrapperType=" + wrapperType);
 
                 if (wrapperObj.getSqlSentance() != null) {
                         // skip??
@@ -381,6 +385,13 @@ public class CDGCWriter {
                 String conectionName = wrapperObj.getDataSource() + "__" + wrapperObj.getType();
                 System.out.println("connection name: " + conectionName + " wrappedSch=" + wrappedSchema
                                 + " wrappedTable=" + wrappedTable);
+
+                // issue #56 - check for wrappedTable null value
+                if (wrappedTable == null) {
+                        System.out.println(
+                                        "Error:  no table name found for external object, lineage will not be genertated");
+                        return;
+                }
 
                 String dataSourceId = conectionName + "." + wrappedSchema;
                 // add schema data source only if not already there
@@ -406,16 +417,31 @@ public class CDGCWriter {
 
                         ref_datasources.add(dataSourceId);
                 }
-                // now look at the tables
+
+                // now look at the tables (and check if unique + understand why not unique)
+                // Issue #57 - check for duplicate datasets
                 String dataSetId = dataSourceId + "/" + wrappedTable;
+                boolean isDataSetCreated = false;
+                if (ref_datasetids.contains(dataSetId)) {
+                        isDataSetCreated = true;
+                        System.out.println(
+                                        "duplicate ref dataset id=" + dataSetId + " will not be export multiple times");
+                } else {
+                        // create an entry, so we can check for uniquness
+                        ref_datasetids.add(dataSetId);
+                }
                 // String newdataSetId = wrappedSchema + "/" + wrappedTable;
                 String newdataSetId = dataSetId;
                 String linkedDataSet = dbName + "/" + schemaName + "/" + tableName;
-                refDataSetWriter.writeNext(new String[] { newdataSetId, "TRUE",
-                                "", wrappedTable }, APPLY_QUOTES_TO_ALL);
-                linksWriter.writeNext(new String[] { dataSourceId, newdataSetId,
-                                "core.DataSourceParentChild"
-                });
+
+                // if unique - create the dataset
+                if (!isDataSetCreated) {
+                        refDataSetWriter.writeNext(new String[] { newdataSetId, "TRUE",
+                                        "", wrappedTable }, APPLY_QUOTES_TO_ALL);
+                        linksWriter.writeNext(new String[] { dataSourceId, newdataSetId,
+                                        "core.DataSourceParentChild"
+                        });
+                }
 
                 linksWriter.writeNext(new String[] { newdataSetId, linkedDataSet, "core.DataSetDataFlow"
                 });
@@ -429,13 +455,15 @@ public class CDGCWriter {
                         } else {
                                 String fromColId = newdataSetId + "/" + fromCol;
 
-                                refDataElementWriter.writeNext(new String[] { fromColId, "TRUE",
-                                                "", fromCol }, APPLY_QUOTES_TO_ALL);
-                                linksWriter
-                                                .writeNext(new String[] { newdataSetId, fromColId,
-                                                                "core.DataSetToDataElementParentship"
-                                                });
-
+                                // if dataset is not already created
+                                if (!isDataSetCreated) {
+                                        refDataElementWriter.writeNext(new String[] { fromColId, "TRUE",
+                                                        "", fromCol }, APPLY_QUOTES_TO_ALL);
+                                        linksWriter
+                                                        .writeNext(new String[] { newdataSetId, fromColId,
+                                                                        "core.DataSetToDataElementParentship"
+                                                        });
+                                }
                                 // custLineageCount++;
                                 linksWriter.writeNext(new String[] { // connection
                                                 fromColId, linkedDataSet + "/" + tgtCol, "core.DirectionalDataFlow" });
