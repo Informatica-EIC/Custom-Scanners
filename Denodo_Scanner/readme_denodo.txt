@@ -1,7 +1,7 @@
 Version History/Changes for Denodo Scanner
 ------------------------------------------
 
-2024/06/20 - v1.1.020 dev
+2024/06/20 - v1.1.020
 - bugfix issue #54 - NullPointerException raised when datafile has no file information. 
 - bugfix issue #56 - if table is null in JDBC Wrapper, wrong lineage was generated (now removed)
 - bugfix issue #57 - duplicate reference dataset/dataelements were created in some situations
