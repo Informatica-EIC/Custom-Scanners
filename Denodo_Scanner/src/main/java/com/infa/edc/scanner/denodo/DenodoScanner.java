@@ -35,7 +35,7 @@ import scanner_util.EncryptionUtil;
 import com.opencsv.CSVWriter;
 
 public class DenodoScanner extends GenericScanner {
-    public static final String version = "1.1.020";
+    public static final String version = "1.1.021-location";
 
     protected static String DISCLAIMER = "\n************************************ Disclaimer *************************************\n"
             + "By using the Denodo scanner, you are agreeing to the following:-\n"
@@ -110,6 +110,10 @@ public class DenodoScanner extends GenericScanner {
     // view query filter - default get all views - allows for db filtering for views
     // - for troubleshooting
     protected String view_query_filter = "%";
+
+    // property for Location Attr
+    protected String location_attr = "com.infa.ldm.relational.Location";
+    protected boolean prefix_location_attr = false;
 
     /**
      * Scanner constructor - passing the property file that controls the scan
@@ -235,6 +239,20 @@ public class DenodoScanner extends GenericScanner {
             // also set for the super class
             super.includeUuidCols = includeUuidCols;
 
+            // override Location attribute with custom
+            String location_attr_config = prop.getProperty("location_custom_attr", "");
+            if (location_attr_config != null && location_attr_config.length() > 0) {
+                // store new location attribute
+                System.out.println("Location Custom attr=" + location_attr_config);
+                this.location_attr = location_attr_config;
+            }
+            // check if prefix for location attribute is set
+            prefix_location_attr = Boolean
+                    .parseBoolean(prop.getProperty("location_prefix_with_database", "false"));
+            if (prefix_location_attr) {
+                System.out.println(
+                        "Location value will be prefixed with schema name.  location_prefix_with_database=true from config file");
+            }
             /**
              * experimental features here
              */
@@ -580,6 +598,12 @@ public class DenodoScanner extends GenericScanner {
                         folder = tableWrapper.getFolder();
                     }
 
+                    // folder prefix configured?
+                    if (prefix_location_attr) {
+                        folder = schemaName + folder;
+                        // System.out.println("folder prefix added: " + folder);
+                    }
+
                     // System.out.println("found one...");
                     System.out.print("\t\t" + schemaName // + " schema="
                     // + rsTables.getString("TABLE_SCHEM")
@@ -891,12 +915,19 @@ public class DenodoScanner extends GenericScanner {
                         // e.printStackTrace();
                     }
 
+                    // special processing for folder - if prefix is used, we need to override what
+                    // is coming from denodo
+                    String folderValue = rsViews.getString("folder");
+                    if (prefix_location_attr) {
+                        folderValue = schemaName + folderValue;
+                        // System.out.println("folder prefix added: " + folderValue);
+                    }
+
                     // viewSqlStmnt = ""; // delete for validation testing
                     this.createView(catalogName, schemaName, viewName, rsViews.getString("description"), viewSqlStmnt,
-                            rsViews.getString("folder"));
+                            folderValue);
                     cdgcWriter.createView(catalogName, schemaName, viewName, rsViews.getString("description"),
-                            viewSqlStmnt,
-                            rsViews.getString("folder"));
+                            viewSqlStmnt, folderValue);
 
                     // for denodo - we want to document the expression formula for any calculated
                     // fields
@@ -1892,15 +1923,15 @@ public class DenodoScanner extends GenericScanner {
                     "com.infa.ldm.relational.StoreType", "com.infa.ldm.relational.SystemType" });
             // tableWriter.writeNext(new String[] { "class", "identity", "core.name",
             // "core.description",
-            // "com.infa.ldm.relational.ViewStatement", "com.infa.ldm.relational.Location",
+            // "com.infa.ldm.relational.ViewStatement", location_attr,
             // "core.dataSourceUuid" });
             // santander remove core.dataSourceUuid and core.ataSetUuid
             if (includeUuidCols) {
                 tableWriter.writeNext(new String[] { "class", "identity", "core.name", "core.description",
-                        "com.infa.ldm.relational.ViewStatement", "com.infa.ldm.relational.Location",
+                        "com.infa.ldm.relational.ViewStatement", location_attr,
                         "core.dataSourceUuid" });
                 viewWriter.writeNext(new String[] { "class", "identity", "core.name", "core.description",
-                        "com.infa.ldm.relational.ViewStatement", "com.infa.ldm.relational.Location",
+                        "com.infa.ldm.relational.ViewStatement", location_attr,
                         "core.dataSourceUuid" });
                 columnWriter
                         .writeNext(new String[] { "class", "identity", "core.name", "com.infa.ldm.relational.Datatype",
@@ -1915,9 +1946,9 @@ public class DenodoScanner extends GenericScanner {
             } else {
                 // remove the uuid columns
                 tableWriter.writeNext(new String[] { "class", "identity", "core.name", "core.description",
-                        "com.infa.ldm.relational.ViewStatement", "com.infa.ldm.relational.Location" });
+                        "com.infa.ldm.relational.ViewStatement", location_attr });
                 viewWriter.writeNext(new String[] { "class", "identity", "core.name", "core.description",
-                        "com.infa.ldm.relational.ViewStatement", "com.infa.ldm.relational.Location" });
+                        "com.infa.ldm.relational.ViewStatement", location_attr });
                 columnWriter
                         .writeNext(new String[] { "class", "identity", "core.name", "com.infa.ldm.relational.Datatype",
                                 "com.infa.ldm.relational.DatatypeLength", "com.infa.ldm.relational.Position",
