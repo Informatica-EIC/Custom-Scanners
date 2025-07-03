@@ -3,10 +3,10 @@ Version History/Changes for Denodo Scanner
 
 2025/07/03 - v1.1.030
 - feature request #61
-  - added 'location_custom_attr' switch to import the folder location to custom attribute to enable bulk export.
+  - added 'location_custom_attr' switch to import the folder location to custom attribute to enable bulk export (and filtering).
     if no custom attribute set, will continue to use "com.infa.ldm.relational.Location"
   - added 'location_prefix_with_database' property to prefix location with schema name.  default=false (not prefixed)
-  - added 'add_location_to_elements' property, will add location to Column and ViewColumn objects
+  - added 'add_location_to_elements' property, will add location to Column and ViewColumn objects.  default=false (not exported)
 - updated 3rd party library versions/drivers 
   - Denodo JDBC driver to 9.2.2
   - opencsv version from 5.9 to 5.11
