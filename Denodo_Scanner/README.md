@@ -1,5 +1,19 @@
 # DENODO VDP custom scanner for Enterprise Data Catalog
 
+## Recent Changes/History
+
+2025/07/03 - v1.1.030
+- feature request #61
+  - added 'location_custom_attr' switch to import the folder location to custom attribute to enable bulk export (and filtering).
+    <br/>if no custom attribute set, will continue to use "com.infa.ldm.relational.Location"
+  - added 'location_prefix_with_database' property to prefix location with schema name.  default=false (not prefixed)
+  - added 'add_location_to_elements' property, will add location to Column and ViewColumn objects.  default=false (not exported)
+- updated 3rd party library versions/drivers 
+  - Denodo JDBC driver to 9.2.2
+  - opencsv version from 5.9 to 5.11
+
+full history in [readme_denodo.txt](readme_denodo.txt)
+
 ### NOTE:  Permissions in Denodo
 
 To ensure full lineage - denodo requires WRITE permissions.  (yes, it is strange)
@@ -43,7 +57,13 @@ Since Denodo is a virtual layer - we also need to generate the lineage links bac
 
 
 
-## Download the Scanner - from Informatica MarketPlace or Github 
+## Download the Scanner - from TSFTP, Github or Informatica MarketPlace
+
+Note:  Marketplace location is not updated, best location is TSFTP or github
+
+TSFTP Folder Location:
+- /updates/Catalog_Solutions/Custom_Scanner
+  <br/>current and previous versions are added there - e.g. Denodo-Custom-Scanner-1.1.030.zip
 
 from Informatica Marketplace - click here to download. https://marketplace.informatica.com/listings/cloud/solutions/denodo-scanner-for-edc.html
 
