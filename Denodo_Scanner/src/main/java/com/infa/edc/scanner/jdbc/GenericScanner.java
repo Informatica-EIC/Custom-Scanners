@@ -516,7 +516,7 @@ public class GenericScanner implements IJdbcScanner {
 
                 // createColumn( );
                 this.createColumn(catalogName, schemaName, tableName, columnName, typeName, columnsize, pos, remarks,
-                        isView);
+                        isView, "", false);
 
             } // end for each column
         } catch (Exception ex) {
@@ -748,7 +748,7 @@ public class GenericScanner implements IJdbcScanner {
     }
 
     protected void createColumn(String dbName, String schema, String table, String column, String type, String length,
-            String pos, String desc, boolean isView) {
+            String pos, String desc, boolean isView, String folderName, boolean addFolder) {
 
         String schId = dbName + "/" + schema;
         // bugfix: https://github.com/Informatica-EIC/Custom-Scanners/issues/48
@@ -764,13 +764,24 @@ public class GenericScanner implements IJdbcScanner {
         try {
             if (!isView) {
                 if (includeUuidCols) {
-                    this.columnWriter.writeNext(
-                            new String[] { COL_TYPE, colId, column, type, length, pos, datasourceUuid, dataSetUuid,
-                                    desc });
+                    if (addFolder) {
+                        this.columnWriter.writeNext(
+                                new String[] { COL_TYPE, colId, column, type, length, pos, datasourceUuid, dataSetUuid,
+                                        desc, folderName });
+                    } else {
+                        this.columnWriter.writeNext(
+                                new String[] { COL_TYPE, colId, column, type, length, pos, datasourceUuid, dataSetUuid,
+                                        desc });
+                    }
                 } else {
-                    this.columnWriter.writeNext(
-                            new String[] { COL_TYPE, colId, column, type, length, pos, desc });
-
+                    // check if also writing folder
+                    if (addFolder) {
+                        this.columnWriter.writeNext(
+                                new String[] { COL_TYPE, colId, column, type, length, pos, desc, folderName });
+                    } else {
+                        this.columnWriter.writeNext(
+                                new String[] { COL_TYPE, colId, column, type, length, pos, desc });
+                    }
                 }
                 colCount++;
                 this.linksWriter.writeNext(new String[] { "com.infa.ldm.relational.TableColumn", tabId, colId });
@@ -796,7 +807,7 @@ public class GenericScanner implements IJdbcScanner {
     }
 
     protected void createViewColumn(String dbName, String schema, String table, String column, String type,
-            String length, String pos, String expression, String desc) {
+            String length, String pos, String expression, String desc, String folderName, boolean addFolder) {
 
         String schId = dbName + "/" + schema;
         String tabId = schId + "/" + table;
@@ -810,12 +821,25 @@ public class GenericScanner implements IJdbcScanner {
 
         try {
             if (includeUuidCols) {
-                this.viewColumnWriter.writeNext(
-                        new String[] { VIEWCOL_TYPE, colId, column, type, length, pos, datasourceUuid, dataSetUuid,
-                                expression, desc });
+                if (addFolder) {
+                    this.viewColumnWriter.writeNext(
+                            new String[] { VIEWCOL_TYPE, colId, column, type, length, pos, datasourceUuid, dataSetUuid,
+                                    expression, desc, folderName });
+                } else {
+                    this.viewColumnWriter.writeNext(
+                            new String[] { VIEWCOL_TYPE, colId, column, type, length, pos, datasourceUuid, dataSetUuid,
+                                    expression, desc });
+                }
+
             } else {
-                this.viewColumnWriter.writeNext(
-                        new String[] { VIEWCOL_TYPE, colId, column, type, length, pos, expression, desc });
+                if (addFolder) {
+                    this.viewColumnWriter.writeNext(
+                            new String[] { VIEWCOL_TYPE, colId, column, type, length, pos, expression, desc,
+                                    folderName });
+                } else {
+                    this.viewColumnWriter.writeNext(
+                            new String[] { VIEWCOL_TYPE, colId, column, type, length, pos, expression, desc });
+                }
 
             }
             vwColCount++;

@@ -5,7 +5,7 @@
 
   <groupId>com.infa.edc.scanner.denodo</groupId>
   <artifactId>DenodoScanner</artifactId>
-  <version>1.1.021-location-SNAPSHOT</version>
+  <version>1.1.030-SNAPSHOT</version>
 
   <build>
     <sourceDirectory>src/main/java</sourceDirectory>
@@ -83,7 +83,7 @@
             </goals>
             <configuration>
               <sourceFile>${project.basedir}/packaged/${project.artifactId}.zip</sourceFile>
-              <destinationFile>${project.basedir}/packaged/Denodo-Custom-Scanner-1.1.021-Location.zip</destinationFile>
+              <destinationFile>${project.basedir}/packaged/Denodo-Custom-Scanner-1.1.030.zip</destinationFile>
             </configuration>
           </execution>
         </executions>
@@ -108,7 +108,7 @@
     <dependency>
       <groupId>com.denodo</groupId>
       <artifactId>denodo-vdp-jdbcdriver-full</artifactId>
-      <version>8.0.0-SNAPSHOT</version>
+      <version>9.2.2</version>
     </dependency>
   </dependencies>
 

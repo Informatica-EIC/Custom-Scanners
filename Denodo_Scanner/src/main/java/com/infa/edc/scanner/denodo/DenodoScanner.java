@@ -15,6 +15,7 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -35,7 +36,7 @@ import scanner_util.EncryptionUtil;
 import com.opencsv.CSVWriter;
 
 public class DenodoScanner extends GenericScanner {
-    public static final String version = "1.1.021-location";
+    public static final String version = "1.1.030-location";
 
     protected static String DISCLAIMER = "\n************************************ Disclaimer *************************************\n"
             + "By using the Denodo scanner, you are agreeing to the following:-\n"
@@ -111,9 +112,10 @@ public class DenodoScanner extends GenericScanner {
     // - for troubleshooting
     protected String view_query_filter = "%";
 
-    // property for Location Attr
-    protected String location_attr = "com.infa.ldm.relational.Location";
+    // properties for Location Attr
+    protected String LOCATION_ATTR = "com.infa.ldm.relational.Location";
     protected boolean prefix_location_attr = false;
+    protected boolean add_location_to_elements = false;
 
     /**
      * Scanner constructor - passing the property file that controls the scan
@@ -244,7 +246,7 @@ public class DenodoScanner extends GenericScanner {
             if (location_attr_config != null && location_attr_config.length() > 0) {
                 // store new location attribute
                 System.out.println("Location Custom attr=" + location_attr_config);
-                this.location_attr = location_attr_config;
+                this.LOCATION_ATTR = location_attr_config;
             }
             // check if prefix for location attribute is set
             prefix_location_attr = Boolean
@@ -253,6 +255,15 @@ public class DenodoScanner extends GenericScanner {
                 System.out.println(
                         "Location value will be prefixed with schema name.  location_prefix_with_database=true from config file");
             }
+
+            // read flag add_location_to_elements (default=false)
+            add_location_to_elements = Boolean
+                    .parseBoolean(prop.getProperty("add_location_to_elements", "false"));
+            if (add_location_to_elements) {
+                System.out.println(
+                        "Location value will be added to dataelements");
+            }
+
             /**
              * experimental features here
              */
@@ -628,7 +639,7 @@ public class DenodoScanner extends GenericScanner {
                     // this.createTable(catalogName, schemaName, tableName, comment);
 
                     // System.out.println("calling get columns.." + tableCount);
-                    this.getColumnsForTable(catalogName, schemaName, tableName, false);
+                    getColumnsForTable(catalogName, schemaName, tableName, false, folder);
                     // System.out.println("called get columns.." + tableCount + " hasnext:" +
                     // rsTables.isLast());
                 } catch (Exception ex) {
@@ -939,7 +950,7 @@ public class DenodoScanner extends GenericScanner {
                     // possible bug - calling getColumns for table (for views) fails after 1000 of
                     // them
                     // maybe some form of query limit
-                    getColumnsForTable(catalogName, schemaName, viewName, true);
+                    getColumnsForTable(catalogName, schemaName, viewName, true, folderValue);
 
                 }
 
@@ -987,9 +998,12 @@ public class DenodoScanner extends GenericScanner {
      * catalogName - not used for denodo (this is sub-classed off generic jdbc)
      * schemaName - for Denodo, this is the database tableName - table or view name
      * isView - true if view, otherwise it is a table
+     * folderName - value for folder, write only if add_folder_for_elements switch
+     * is set
      *
      */
-    protected void getColumnsForTable(String catalogName, String schemaName, String tableName, boolean isView) {
+    protected void getColumnsForTable(String catalogName, String schemaName, String tableName, boolean isView,
+            String folderName) {
         if (doDebug && debugWriter != null) {
             debugWriter.println("entering getColumnsForTable(" + catalogName + ", " + schemaName + ", " + tableName
                     + ", " + isView + ")");
@@ -1055,14 +1069,14 @@ public class DenodoScanner extends GenericScanner {
                 // createColumn( );
                 if (isView) {
                     this.createViewColumn(catalogName, schemaName, tableName, columnName, typeName, columnsize, pos,
-                            exprVal, comments);
+                            exprVal, comments, folderName, add_location_to_elements);
                     cdgcWriter.createViewColumn(catalogName, schemaName, tableName, columnName, typeName, columnsize,
                             pos,
                             comments, exprVal);
 
                 } else {
                     this.createColumn(catalogName, schemaName, tableName, columnName, typeName, columnsize, pos,
-                            comments, isView);
+                            comments, isView, folderName, add_location_to_elements);
                     cdgcWriter.createColumn(catalogName, schemaName, tableName, columnName, typeName, columnsize, pos,
                             comments);
                 }
@@ -1926,38 +1940,22 @@ public class DenodoScanner extends GenericScanner {
             // "com.infa.ldm.relational.ViewStatement", location_attr,
             // "core.dataSourceUuid" });
             // santander remove core.dataSourceUuid and core.ataSetUuid
-            if (includeUuidCols) {
-                tableWriter.writeNext(new String[] { "class", "identity", "core.name", "core.description",
-                        "com.infa.ldm.relational.ViewStatement", location_attr,
-                        "core.dataSourceUuid" });
-                viewWriter.writeNext(new String[] { "class", "identity", "core.name", "core.description",
-                        "com.infa.ldm.relational.ViewStatement", location_attr,
-                        "core.dataSourceUuid" });
-                columnWriter
-                        .writeNext(new String[] { "class", "identity", "core.name", "com.infa.ldm.relational.Datatype",
-                                "com.infa.ldm.relational.DatatypeLength", "com.infa.ldm.relational.Position",
-                                "core.dataSourceUuid",
-                                "core.dataSetUuid", "core.description" });
-                viewColumnWriter
-                        .writeNext(new String[] { "class", "identity", "core.name", "com.infa.ldm.relational.Datatype",
-                                "com.infa.ldm.relational.DatatypeLength", "com.infa.ldm.relational.Position",
-                                "core.dataSourceUuid", "core.dataSetUuid", "com.infa.ldm.relational.ViewStatement",
-                                "core.description" });
-            } else {
-                // remove the uuid columns
-                tableWriter.writeNext(new String[] { "class", "identity", "core.name", "core.description",
-                        "com.infa.ldm.relational.ViewStatement", location_attr });
-                viewWriter.writeNext(new String[] { "class", "identity", "core.name", "core.description",
-                        "com.infa.ldm.relational.ViewStatement", location_attr });
-                columnWriter
-                        .writeNext(new String[] { "class", "identity", "core.name", "com.infa.ldm.relational.Datatype",
-                                "com.infa.ldm.relational.DatatypeLength", "com.infa.ldm.relational.Position",
-                                "core.description" });
-                viewColumnWriter
-                        .writeNext(new String[] { "class", "identity", "core.name", "com.infa.ldm.relational.Datatype",
-                                "com.infa.ldm.relational.DatatypeLength", "com.infa.ldm.relational.Position",
-                                "com.infa.ldm.relational.ViewStatement", "core.description" });
-            }
+
+            // assemble headers - with optional uuid's and location
+            Map<String, ArrayList<String>> headerMap = assembleHeaders();
+            // System.out.println(headerMap);
+
+            // headers.put("columnHeader", colHeaders);
+            // headers.put("tableHeader", tabHeaders);
+            // headers.put("viewColumnHeader", viewColHeaders);
+
+            ArrayList<String> colHeaders = headerMap.get("columnHeader");
+            ArrayList<String> tabHeaders = headerMap.get("tableHeader");
+            ArrayList<String> vcolHeaders = headerMap.get("viewColumnHeader");
+            tableWriter.writeNext(tabHeaders.toArray(new String[0]));
+            viewWriter.writeNext(tabHeaders.toArray(new String[0]));
+            columnWriter.writeNext(colHeaders.toArray(new String[0]));
+            viewColumnWriter.writeNext(vcolHeaders.toArray(new String[0]));
 
             linksWriter.writeNext(new String[] { "association", "fromObjectIdentity", "toObjectIdentity" });
             filteredOutWriter.writeNext(new String[] { "object", "filter type" });
@@ -1995,6 +1993,45 @@ public class DenodoScanner extends GenericScanner {
 
         return initialized;
 
+    }
+
+    protected Map<String, ArrayList<String>> assembleHeaders() {
+        // create headers for all files, taking into consideration the flags for uuid,
+        // and location for elements
+        Map<String, ArrayList<String>> headers = new HashMap<String, ArrayList<String>>();
+
+        // column headers
+        ArrayList<String> colHeaders = new ArrayList<>(
+                Arrays.asList("class", "identity", "core.name", "com.infa.ldm.relational.Datatype",
+                        "com.infa.ldm.relational.DatatypeLength", "com.infa.ldm.relational.Position"));
+        ArrayList<String> tabHeaders = new ArrayList<>(
+                Arrays.asList("class", "identity", "core.name", "core.description",
+                        "com.infa.ldm.relational.ViewStatement", LOCATION_ATTR));
+        ArrayList<String> viewColHeaders = new ArrayList<>(
+                Arrays.asList("class", "identity", "core.name", "com.infa.ldm.relational.Datatype",
+                        "com.infa.ldm.relational.DatatypeLength", "com.infa.ldm.relational.Position"));
+
+        if (includeUuidCols) {
+            colHeaders.add("core.dataSourceUuid");
+            colHeaders.add("core.dataSetUuid");
+            tabHeaders.add("core.dataSourceUuid");
+            viewColHeaders.add("core.dataSourceUuid");
+            viewColHeaders.add("core.dataSetUuid");
+        }
+        colHeaders.add("core.description");
+        viewColHeaders.add("com.infa.ldm.relational.ViewStatement");
+        viewColHeaders.add("core.description");
+
+        if (add_location_to_elements) {
+            colHeaders.add(LOCATION_ATTR);
+            viewColHeaders.add(LOCATION_ATTR);
+        }
+
+        headers.put("columnHeader", colHeaders);
+        headers.put("tableHeader", tabHeaders);
+        headers.put("viewColumnHeader", viewColHeaders);
+
+        return headers;
     }
 
     /**
